@@ -26,8 +26,27 @@ export function compareUpdateVersions(a: string, b: string): number | null {
 // Ajouter les nouveautés ici à chaque livraison, de la plus récente à la plus ancienne.
 export const REMIX_UPDATES = [
   {
-    id: "2026-11-17-xperience-refresh-collections",
+    id: "2026-11-17-verified-files-first",
     version: "current",
+    date: "2026-11-17",
+    title: [
+      "Fichiers vérifiés (Alkodiques) lus en premier",
+      "Verified files (Alkodiques) played first",
+    ],
+    items: [
+      [
+        "Un fichier AllDebrid vérifié (un seul appel, sans magnet) passe devant les autres sources dès qu’il respecte la langue, la résolution du profil, les règles et la santé connue, même si un torrent est de meilleure résolution. En cas d’échec, la source suivante est essayée. Réglage resolver.verifiedFiles : off, tie (à qualité égale) ou first (défaut).",
+        "A verified AllDebrid file (a single call, no magnet) goes ahead of other sources whenever it fits the language, profile resolution, rules and known health, even when a torrent has a higher resolution. If it fails, the next source is tried. Setting resolver.verifiedFiles: off, tie (equal quality) or first (default).",
+      ],
+      [
+        "Les fichiers « Alkolites » s’appellent désormais « Alkodiques » et gardent leur étiquette dans les traces.",
+        "The “Alkolites” files are now called “Alkodiques” and keep their label in traces.",
+      ],
+    ],
+  },
+  {
+    id: "2026-11-17-xperience-refresh-collections",
+    version: "0.2.37-remix.109.1",
     date: "2026-11-17",
     title: ["Xperience : actualisation et collections", "Xperience: refresh and collections"],
     items: [
