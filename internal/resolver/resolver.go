@@ -1595,7 +1595,7 @@ func (s *Service) rankPass(ctx context.Context, env rankEnv, req core.ResolveReq
 	now := s.now()
 	rc := s.rankContext(profile, t, rcfg, now)
 	var cands []candidate
-	vfMode, vfAllowed := verifiedFilesMode(rcfg.VerifiedFiles), core.OnDemandStreamsAllowed(ctx)
+	vfMode := verifiedFilesMode(rcfg.VerifiedFiles)
 	clientRejected := false
 	// For a known catalogue namesake, a corroborated result makes name-only
 	// results ambiguous. Other series keep their ordinary quality fallbacks.
@@ -1795,7 +1795,7 @@ func (s *Service) rankPass(ctx context.Context, env rankEnv, req core.ResolveReq
 			}
 		}
 		cands = append(cands, candidate{identityWeak: !pinned && identity.ambiguous(rel, sreq), identityConflict: namesake && episodeRegionConflict(rel, t), fallback: belowQuality, belowScore: belowScore, counted: sc.counted, policy: policyResult, rel: rel, trace: tr, verified: verified, langOK: langOK, langWanted: langWanted, starved: starved, bandwidth: bandwidth, yearGuessed: yearGuessed, cf: sc.total, keys: keysFor(rel, starved, rc)})
-		markVerifiedFile(&cands[len(cands)-1], vfMode, vfAllowed)
+		markVerifiedFile(&cands[len(cands)-1], vfMode)
 		if trace != nil && tr >= 0 && cands[len(cands)-1].vfFirst {
 			trace.Candidates[tr].Route = "verified file (Alkodiques): ahead of other sources"
 		}
@@ -1830,9 +1830,6 @@ func (s *Service) orderPreferenceCandidates(cands []candidate, title *core.Title
 		return compareCandidates(cands[i], cands[j])
 	})
 	cands = s.routeSources(cands, title, trace)
-	// Source routing may put a faster source first among quality peers; a
-	// verified file promoted by the owner's setting stays ahead of it.
-	sort.SliceStable(cands, func(i, j int) bool { return cands[i].vfFirst && !cands[j].vfFirst })
 	// Source preferences may reorder quality peers, but cannot promote an
 	// ambiguous namesake above evidence identifying the requested show.
 	sort.SliceStable(cands, func(i, j int) bool { return !cands[i].identityWeak && cands[j].identityWeak })

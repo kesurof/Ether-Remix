@@ -32,8 +32,8 @@ const VerifiedFileIDPrefix = "sfr-alko:"
 // a standalone provider file link whose playback costs one link unlock and no
 // magnet. The importer stamps the ID and GUID prefix, which survives the
 // indexer rewrite (only the display name and trust binding change); the file
-// link itself must still be valid.
+// link itself must still be valid and the size known (as acquireFile requires).
 func IsVerifiedFile(r Release) bool {
 	return (strings.HasPrefix(r.ID, VerifiedFileIDPrefix) || strings.HasPrefix(r.GUID, VerifiedFileIDPrefix)) &&
-		r.Protocol == ProtocolHTTP && r.StreamDebrid == "alldebrid" && ValidAllDebridFileURL(r.StreamURL)
+		r.Size > 0 && r.Protocol == ProtocolHTTP && r.StreamDebrid == "alldebrid" && ValidAllDebridFileURL(r.StreamURL)
 }

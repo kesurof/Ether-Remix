@@ -89,15 +89,16 @@ func compareCandidates(a, b candidate) bool {
 	if x.position != y.position {
 		return x.position > y.position
 	}
+	// "tie": among releases at the same quality position, a verified file
+	// leads (before revision and custom format score).
+	if a.vfTie != b.vfTie {
+		return a.vfTie
+	}
 	if x.revision != y.revision {
 		return x.revision > y.revision
 	}
 	if a.cf != b.cf {
 		return a.cf > b.cf
-	}
-	// "tie": a verified file leads among releases of equal quality.
-	if a.vfTie != b.vfTie {
-		return a.vfTie
 	}
 	if x.protocol != y.protocol {
 		return x.protocol
@@ -352,10 +353,11 @@ func verifiedFilesMode(v string) string {
 // held) and is not a soft fallback qualifies: no weak identity, no score or
 // quality shortfall, accepted audio, no avoided release rule, and a delivery
 // size the client's connection carries. Speculative work (warm-ups,
-// availability checks) never promotes: an on-demand link there stops the
-// search, and the other sources must stay reachable.
-func markVerifiedFile(c *candidate, mode string, onDemandAllowed bool) {
-	if mode == verifiedFilesOff || !onDemandAllowed || !core.IsVerifiedFile(c.rel) {
+// availability checks) promotes too: the on-demand link stops an unattended
+// search at the file (ErrForegroundOnly), so no torrent is prepared and warmed
+// ahead of it, and Play resolves again and opens the file.
+func markVerifiedFile(c *candidate, mode string) {
+	if mode == verifiedFilesOff || !core.IsVerifiedFile(c.rel) {
 		return
 	}
 	if c.identityWeak || c.identityConflict || c.belowScore || c.fallback || !c.langOK || c.policy.Fallback != 0 || c.bandwidth < 0 {

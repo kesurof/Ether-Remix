@@ -163,6 +163,12 @@ func (s *Service) routeSources(cands []candidate, t *core.Title, trace *Trace) [
 	if len(cands) < 2 {
 		return cands
 	}
+	// A verified file the owner's setting put first stays first: source
+	// routing only reorders quality peers by speed, and an HTTP file routes
+	// as debrid, where a known-cached torrent could otherwise overtake it.
+	if cands[0].vfFirst || cands[0].vfTie {
+		return cands
+	}
 	rcfg := s.resolverCfg()
 	mode := strings.ToLower(strings.TrimSpace(rcfg.SourcePreference))
 	explicit := mode == PreferDebrid || mode == PreferUsenet
