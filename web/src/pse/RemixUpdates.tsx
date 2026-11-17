@@ -218,8 +218,8 @@ export const REMIX_UPDATES = [
     title: ["Bibliothèque de releases en bêta", "Release library beta"],
     items: [
       [
-        "Option désactivée par défaut : références chiffrées réutilisées pour la lecture et les secours, y compris les liens fichiers Alkolites. Fiches du catalogue : releases indexées triables par qualité, taille, codecs, source, langues et dates, avec choix de l’épisode.",
-        "Disabled by default: encrypted references reused for playback and fallback, including Alkolites file links. Catalogue details show indexed releases sortable by quality, size, codecs, source, languages and dates, with episode selection.",
+        "Option désactivée par défaut : références chiffrées réutilisées pour la lecture et les secours, y compris les liens fichiers Alkodiques. Fiches du catalogue : releases indexées triables par qualité, taille, codecs, source, langues et dates, avec choix de l’épisode.",
+        "Disabled by default: encrypted references reused for playback and fallback, including Alkodiques file links. Catalogue details show indexed releases sortable by quality, size, codecs, source, languages and dates, with episode selection.",
       ],
     ],
   },
@@ -228,13 +228,13 @@ export const REMIX_UPDATES = [
     version: "0.2.37-remix.93.1",
     date: "2026-11-16",
     title: [
-      "SFR : fichiers Alkolites sans ajout de magnet",
-      "SFR: Alkolites files without adding magnets",
+      "SFR : fichiers Alkodiques sans ajout de magnet",
+      "SFR: Alkodiques files without adding magnets",
     ],
     items: [
       [
-        "Import et recherche des fichiers Alkolites déjà vérifiés. Avec votre compte AllDebrid, la lecture débride le lien fichier sans ajouter de magnet, y compris au renouvellement. Les limites API habituelles restent applicables.",
-        "Import and search verified Alkolites files. With your AllDebrid account, playback unlocks the file link without adding magnets, including when refreshing it. Normal API limits still apply.",
+        "Import et recherche des fichiers Alkodiques déjà vérifiés. Avec votre compte AllDebrid, la lecture débride le lien fichier sans ajouter de magnet, y compris au renouvellement. Les limites API habituelles restent applicables.",
+        "Import and search verified Alkodiques files. With your AllDebrid account, playback unlocks the file link without adding magnets, including when refreshing it. Normal API limits still apply.",
       ],
     ],
   },
