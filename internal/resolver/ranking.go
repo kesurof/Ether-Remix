@@ -75,6 +75,12 @@ func compareCandidates(a, b candidate) bool {
 	if a.langOK != b.langOK {
 		return a.langOK
 	}
+	// Verified AllDebrid files (resolver.verifiedFiles "first"): one link
+	// unlock and no magnet, so a file that passed every hard gate leads.
+	// Candidates are marked only when they pass them (verifiedFileMode).
+	if a.vfFirst != b.vfFirst {
+		return a.vfFirst
+	}
 	if a.bandwidth != b.bandwidth {
 		return a.bandwidth > b.bandwidth
 	}
@@ -88,6 +94,10 @@ func compareCandidates(a, b candidate) bool {
 	}
 	if a.cf != b.cf {
 		return a.cf > b.cf
+	}
+	// "tie": a verified file leads among releases of equal quality.
+	if a.vfTie != b.vfTie {
+		return a.vfTie
 	}
 	if x.protocol != y.protocol {
 		return x.protocol
@@ -318,4 +328,42 @@ func preferredSource(mode string) string {
 func samePreferenceTier(a, b candidate) bool {
 	return a.belowScore == b.belowScore && a.fallback == b.fallback &&
 		(!a.belowScore || a.counted == b.counted) && (!a.fallback || a.keys.height == b.keys.height)
+}
+
+// Values of config.Resolver.VerifiedFiles. Empty or unknown means "first".
+const (
+	verifiedFilesOff   = "off"
+	verifiedFilesTie   = "tie"
+	verifiedFilesFirst = "first"
+)
+
+// verifiedFilesMode normalises the owner's setting.
+func verifiedFilesMode(v string) string {
+	switch m := strings.ToLower(strings.TrimSpace(v)); m {
+	case verifiedFilesOff, verifiedFilesTie:
+		return m
+	}
+	return verifiedFilesFirst
+}
+
+// markVerifiedFile sets the verified-file promotion on c. Only a candidate
+// that already passed the hard gates (it reached ranking, so language and
+// resolution bounds of the profile, release rules, blocks and known health
+// held) and is not a soft fallback qualifies: no weak identity, no score or
+// quality shortfall, accepted audio, no avoided release rule, and a delivery
+// size the client's connection carries. Speculative work (warm-ups,
+// availability checks) never promotes: an on-demand link there stops the
+// search, and the other sources must stay reachable.
+func markVerifiedFile(c *candidate, mode string, onDemandAllowed bool) {
+	if mode == verifiedFilesOff || !onDemandAllowed || !core.IsVerifiedFile(c.rel) {
+		return
+	}
+	if c.identityWeak || c.identityConflict || c.belowScore || c.fallback || !c.langOK || c.policy.Fallback != 0 || c.bandwidth < 0 {
+		return
+	}
+	if mode == verifiedFilesTie {
+		c.vfTie = true
+		return
+	}
+	c.vfFirst = true
 }
