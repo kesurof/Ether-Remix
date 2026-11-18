@@ -1,5 +1,0 @@
-<<<<<<<< HEAD:internal/admin/dist/assets/house-CAerRlYz.js
-import{l as e}from"./toast-DLT4Yu0M.js";var t={name:`house`,size:24,node:[[`path`,{d:`M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8`,key:`5wwlr5`}],[`path`,{d:`M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z`,key:`r6nss1`}]],aliases:[`home`]};t.node;var n=e(t);export{n as t};
-========
-import{l as e}from"./toast-Cqf4MR5t.js";var t={name:`house`,size:24,node:[[`path`,{d:`M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8`,key:`5wwlr5`}],[`path`,{d:`M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z`,key:`r6nss1`}]],aliases:[`home`]};t.node;var n=e(t);export{n as t};
->>>>>>>> origin/amont/relien-lecture-reglable:internal/admin/dist/assets/house-C8_0Xwl_.js
