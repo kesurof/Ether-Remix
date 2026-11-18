@@ -11,6 +11,9 @@ import (
 // owner sets nothing (resolver.failoverAttempts).
 const defaultFailoverAttempts = 3
 
+// maxFailoverAttempts is the highest resolver.failoverAttempts accepted.
+const maxFailoverAttempts = 10
+
 // failoverAttempts is the cap on the releases one open or failover tries:
 // resolver.failoverAttempts (1 to 10, validated by the admin API), default 3.
 // It replaces Options.MaxAttempts, which no longer bounds these loops.
@@ -19,7 +22,8 @@ func (m *Manager) failoverAttempts() int {
 	if n <= 0 {
 		n = defaultFailoverAttempts
 	}
-	return n
+	// A value typed by hand in config.json skips the admin validation.
+	return min(n, maxFailoverAttempts)
 }
 
 // accountError reports a failure of the whole debrid account (quota reached,

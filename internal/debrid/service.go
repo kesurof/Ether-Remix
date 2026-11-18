@@ -413,6 +413,14 @@ func (e *entry) begin(ctx context.Context, now time.Time) (probe bool, err error
 	return true, nil
 }
 
+// quotaPending reports a provider paused for its daily quota whose single
+// test request has not succeeded yet.
+func (e *entry) quotaPending() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.state == stateQuota
+}
+
 // finish ends a call started by begin. A test request that reported nothing
 // (an unsupported operation, a cancelled caller) frees the reservation.
 func (e *entry) finish(probe bool) {
@@ -720,7 +728,9 @@ func (s *Service) CheckCached(ctx context.Context, hashes []string) (map[string]
 	}
 	definitive := true
 	for _, e := range s.active() {
-		if e.blocked(s.now()) != nil {
+		if e.blocked(s.now()) != nil || e.quotaPending() {
+			// A provider waiting for its quota test is left to a real
+			// unlock: a cache check must not hold (or spend) that one test.
 			definitive = false
 			continue
 		}
