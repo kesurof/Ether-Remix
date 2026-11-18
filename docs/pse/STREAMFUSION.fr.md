@@ -72,7 +72,7 @@ Les recherches lisent au maximum 200 torrents et 200 fichiers Alkodiques, dans l
 
 ### Priorité des fichiers vérifiés (`resolver.verifiedFiles`)
 
-Un fichier Alkodique ne coûte qu'un appel AllDebrid (`link/unlock`), sans magnet. Le réglage `resolver.verifiedFiles` de `config.json` (section `resolver`, modifiable par `PUT /config/resolver`) décide de sa place dans le classement :
+Un fichier Alkodique ne coûte qu'un appel AllDebrid (`link/unlock`), sans magnet. Le réglage `resolver.verifiedFiles` de `config.json` (section `resolver`, modifiable par `PUT /api/config/resolver`) décide de sa place dans le classement :
 
 - `first` (**défaut**, aussi pour une valeur vide ou inconnue) : un fichier vérifié passe devant toutes les autres sources, même de résolution supérieure, tant qu'il respecte les barrières dures : langue acceptée, résolution minimale et maximale du profil, règles à exiger ou à éviter, blocages, santé connue, débit du client. Il ne passe jamais devant s'il est hors profil. S'il échoue, le candidat suivant est essayé comme d'habitude ;
 - `tie` : à rang de qualité égal (même position dans l'ordre de qualité du profil), un fichier vérifié passe devant ;
