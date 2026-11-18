@@ -1554,15 +1554,15 @@ func (s *Service) blockedFile(ctx context.Context, e *entry, hash, torrentID str
 
 // refusal reports an outcome that left nothing downloading on the
 // provider: it refused the torrent or its file, or its adds are paused.
+func refusal(err error) bool {
+	return errors.Is(err, ErrAddRefused) || errors.Is(err, ErrBlocked) || errors.Is(err, errAddsPaused)
+}
+
 // sharedCache reports a provider whose "not cached" answer holds for every
 // account of its service: a debrid service, not a local BitTorrent client
 // or a plugin.
 func sharedCache(e *entry) bool {
 	return !isLocalProvider(e.p) && !strings.HasPrefix(e.cfg.Kind, "plugin:")
-}
-
-func refusal(err error) bool {
-	return errors.Is(err, ErrAddRefused) || errors.Is(err, ErrBlocked) || errors.Is(err, errAddsPaused)
 }
 
 // markRefused remembers, in memory, that the provider refused this hash.
