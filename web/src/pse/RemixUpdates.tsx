@@ -43,12 +43,12 @@ export const REMIX_UPDATES = [
         "The “Alkolites” files are now called “Alkodiques” and keep their label in traces.",
       ],
       [
-        "Quota journalier AllDebrid (ou équivalent) : le compte est mis en pause 1 heure, puis une seule requête de test décide de la reprise. Pendant la pause, la source suivante est utilisée sans solliciter le compte, et le lecteur voit un message clair.",
+        "Quota journalier AllDebrid (ou équivalent) : le compte est mis en pause 1 heure, puis une seule requête de test (une par nœud en cluster) décide de la reprise. Pendant la pause, la source suivante est utilisée sans solliciter le compte, et le lecteur voit un message clair.",
         "AllDebrid daily quota (or equivalent): the account is paused for 1 hour, then a single test request decides whether to resume. Meanwhile the next source is used without calling the account, and the player shows a clear message.",
       ],
       [
-        "Lecture : une erreur de compte (quota, clé) arrête aussitôt les secours qui dépendent du même fournisseur, les secours par lecture sont plafonnés (resolver.failoverAttempts, 3 par défaut) et les relances du client dans les 5 secondes réutilisent le dernier échec au lieu de relancer une résolution.",
-        "Playback: an account error (quota, key) immediately stops fallbacks that depend on the same provider, fallbacks per playback are capped (resolver.failoverAttempts, default 3) and client retries within 5 seconds reuse the last failure instead of resolving again.",
+        "Lecture : quand aucun compte debrid n’est utilisable (quota ou clé refusée sur tous les fournisseurs), les secours qui dépendent du debrid sont écartés au profit des autres sources ; les tentatives par lecture sont plafonnées (resolver.failoverAttempts, de 1 à 10, 3 par défaut) et les relances du client dans les 5 secondes réutilisent le dernier échec au lieu de relancer une résolution.",
+        "Playback: when no debrid account is usable (quota or rejected key on every provider), debrid-dependent fallbacks are dropped in favour of other sources; attempts per playback are capped (resolver.failoverAttempts, 1 to 10, default 3) and client retries within 5 seconds reuse the last failure instead of resolving again.",
       ],
       [
         "Après « version choisie indisponible », un fichier vérifié passe de nouveau devant un flux d’add-on mémorisé, et dans l’ordre de secours.",
