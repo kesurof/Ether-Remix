@@ -59,10 +59,9 @@ func TestPersistentBodyStallReplaysSameFileOnHealthyEdge(t *testing.T) {
 	waitNoInflight(t, live)
 }
 
-// A native link may redirect to its serving CDN. That host differs from
-// the payload's host, so the new replay guard must preserve the existing
-// first-interruption alternate-provider fallback.
-func TestRedirectedBodyStallRetainsAlternateProviderFallback(t *testing.T) {
+// A native link may redirect to its serving CDN. Issue #9: a stalled body
+// never moves the file to another provider nor asks for a new link.
+func TestRedirectedBodyStallKeepsProvider(t *testing.T) {
 	h := newHarness(t, 4<<20, "torbox", "realdebrid")
 	live := newMediaServer(t, 4<<20)
 	h.provs["realdebrid-1"].media = live
@@ -100,21 +99,17 @@ func TestRedirectedBodyStallRetainsAlternateProviderFallback(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer src.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	const off = 1 << 20
 	buf := make([]byte, 4096)
-	n, err := src.(readAtContexter).ReadAtContext(ctx, buf, off)
-	if err != nil || n != len(buf) || !bytes.Equal(buf, live.data[off:off+len(buf)]) {
-		t.Fatalf("redirected stall recovery n=%d err=%v", n, err)
-	}
+	_, _ = src.(readAtContexter).ReadAtContext(ctx, buf, off)
 	p, _ := src.(*httpSource).f.payload()
-	if p.Provider != "realdebrid-1" || urlHost(p.URL) != urlHost(live.URL) {
-		t.Fatalf("legacy provider fallback lost: provider=%s host=%s", p.Provider, urlHost(p.URL))
+	if p.Provider != "torbox-0" || live.requests.Load() != 0 {
+		t.Fatalf("stall moved the file: provider=%s alternate requests=%d", p.Provider, live.requests.Load())
 	}
-	if redirects.Load() != 1 || h.media.requests.Load() != 1 {
-		t.Fatalf("did not switch on first interruption: redirects=%d stalled requests=%d",
-			redirects.Load(), h.media.requests.Load())
+	if h.provs["realdebrid-1"].totalCalls() != 0 {
+		t.Fatal("stall asked the alternate provider")
 	}
 	waitNoInflight(t, h.media)
 	waitNoInflight(t, live)

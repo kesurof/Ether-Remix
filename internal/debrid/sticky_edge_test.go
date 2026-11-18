@@ -40,7 +40,6 @@ func TestRerouteReplayBypassesAPICooldown(t *testing.T) {
 	defer src.Close()
 	f := src.(*httpSource).f
 	f.mu.Lock()
-	f.rerouteAt = e.now().Add(time.Hour)
 	f.mu.Unlock()
 	e.recent.record(pl.Provider, urlHost(live.URL), e.now())
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -65,7 +64,7 @@ func TestRerouteReplayBypassesAPICooldown(t *testing.T) {
 	}
 }
 
-func TestRerouteOtherProvidersRetainRefreshWave(t *testing.T) {
+func TestRerouteNeverRefreshesLink(t *testing.T) {
 	h := newHarness(t, 4<<20, "realdebrid")
 	h.cacheEverywhere(testHash)
 	raw, err := h.svc.Acquire(context.Background(), torrentRelease("other-provider-wave"))
@@ -86,8 +85,8 @@ func TestRerouteOtherProvidersRetainRefreshWave(t *testing.T) {
 	if f.reroute(context.Background(), pl.URL, gen, 1<<20) {
 		t.Fatal("same destination claimed as recovery")
 	}
-	if got := h.provs[pl.Provider].callCount("link") - before; got != rerouteLinks {
-		t.Fatalf("non-TorBox API calls=%d, want %d", got, rerouteLinks)
+	if got := h.provs[pl.Provider].callCount("link") - before; got != 0 {
+		t.Fatalf("non-TorBox API calls=%d, want none", got)
 	}
 }
 
@@ -120,8 +119,8 @@ func TestReroutePinnedDestinationDoesNotSuppressReplay(t *testing.T) {
 	if f.reroute(context.Background(), pl.URL, gen, 1<<20) {
 		t.Fatal("same host claimed as recovery")
 	}
-	if got := calls.Load(); got != rerouteLinks {
-		t.Fatalf("API calls=%d, want %d", got, rerouteLinks)
+	if got := calls.Load(); got != 0 {
+		t.Fatalf("API calls=%d, want none", got)
 	}
 	// Cooling down the API must not prevent a newly learned edge winning.
 	live := newMediaServer(t, 4<<20)
@@ -133,7 +132,7 @@ func TestReroutePinnedDestinationDoesNotSuppressReplay(t *testing.T) {
 	if !f.reroute(context.Background(), pl.URL, gen, 1<<20) {
 		t.Fatal("no replay during API cooldown")
 	}
-	if got := calls.Load(); got != rerouteLinks {
+	if got := calls.Load(); got != 0 {
 		t.Fatalf("cooldown made %d API calls", got)
 	}
 }
@@ -168,7 +167,6 @@ func TestReplayFastFailuresDoNotStarveLaterCandidate(t *testing.T) {
 			defer src.Close()
 			f := src.(*httpSource).f
 			f.mu.Lock()
-			f.rerouteAt = e.now().Add(time.Hour)
 			f.mu.Unlock()
 			// Allocate all listeners before closing them, ensuring three distinct
 			// refused destinations precede the live fourth candidate.

@@ -587,7 +587,6 @@ type remoteFile struct {
 	replayURL       string             // a newly signed link may be probed immediately
 	edgeCursorKey   string             // provider whose candidates were last probed for this file
 	edgeCursorHost  string             // last actual probe; next wave starts after this host
-	rerouteAt       time.Time          // next link-regeneration wave allowed after a host failure
 	rerouteSem      chan struct{}      // one reroute wave at a time; waiters reuse its result
 	mediaHealthyKey string             // a shared cooldown must not interrupt another healthy file
 	mediaPauseKey   string
@@ -755,40 +754,11 @@ func (f *remoteFile) link(ctx context.Context, force bool, gen ...int) (Payload,
 	return out, g, nil
 }
 
-// moveFromHost changes provider without regenerating links on the blocked host.
-func (f *remoteFile) moveFromHost(ctx context.Context, gen int) bool {
-	f.linkMu.Lock()
-	defer f.linkMu.Unlock()
-	p, current := f.payload()
-	if current != gen {
-		return true
-	}
-	if p.IsDirect() || p.IsPluginProvider() {
-		return false
-	}
-	out, err := f.e.svc.alternateProvider(ctx, p)
-	if err != nil || out.Size != f.size {
-		return false
-	}
-	f.mu.Lock()
-	f.pl = out
-	f.routeDegraded = false // another provider's route answers for itself
-	f.gen++
-	hunt := f.endHuntLocked()
-	f.mu.Unlock()
-	if hunt != nil {
-		hunt() // the old provider's hunt has no work left on this provider's evidence
-	}
-	f.e.kickLeases()
-	return true
-}
-
 // Rerouting a link whose CDN node stopped answering (issue #396).
 const (
-	rerouteLinks    = 3                // fresh links one wave asks for before trying another provider
-	rerouteBudget   = 10 * time.Second // bounds one wave: API calls and the alternate provider
-	rerouteSpacing  = 5 * time.Second  // between waves that found a live node
-	rerouteCooldown = 20 * time.Second // after a wave that found none
+	replayRounds   = 3                // replay passes while the link moves under us
+	rerouteBudget  = 10 * time.Second // bounds one replay wave
+	rerouteSpacing = 5 * time.Second
 	// routeDiscoveryWaves bounds the hunt for a flowing route after a
 	// degraded adoption: each hunt wave is a normal probe wave (cap and
 	// budget) that visits each candidate at most once, so exploration
@@ -849,54 +819,17 @@ func (f *remoteFile) reroute(ctx context.Context, failed string, gen int, start 
 		}
 		return moved
 	}
-	// This is deliberately above the API cooldown, with its own context.
-	if replay() {
-		return true
-	}
-	f.mu.Lock()
-	apiDue := !f.e.now().Before(f.rerouteAt)
-	f.mu.Unlock()
-	if !apiDue || ctx.Err() != nil {
-		return false
-	}
-	wctx, cancel := context.WithTimeout(ctx, rerouteBudget)
-	p, _ := f.payload()
-	moved := false
-	for i := 1; i <= rerouteLinks && !moved; i++ {
-		lp, g, err := f.link(wctx, true, gen)
-		if err != nil {
-			f.e.log.Warn("debrid link refresh after media host failure failed", "release", f.id,
-				"provider", p.Provider, "failedHost", urlHost(failed), "err", sanitize(err))
-			break
-		}
-		gen = g
-		u := lp.URL
-		moved = usable(u)
-		f.e.log.Info("debrid link refreshed after media host failure", "release", f.id, "provider", p.Provider,
-			"failedHost", urlHost(failed), "host", urlHost(u), "attempt", i, "newHost", moved)
-	}
-	if !moved && wctx.Err() == nil && f.moveFromHost(wctx, gen) {
-		np, _ := f.payload()
-		if moved = usable(np.URL); moved {
-			f.e.log.Info("debrid release moved off a failed media host", "release", f.id,
-				"failedHost", urlHost(failed), "provider", np.Provider, "host", urlHost(np.URL))
-		}
-	}
-	cancel()
-	// A refresh may have supplied a new token on the same pinned host.
-	// Probe it with the replay budget, never with the exhausted API budget.
+	// Issue #9: a file that was launched reads to the end on its link. A
+	// media host failure (5xx, cut, slow) never asks the provider API for a
+	// new link or another provider; only the same signed link is replayed,
+	// paced by rerouteSpacing (replayAt). Dead or expired links take
+	// the separate refresh path (HTTP 401/403/404/410, ErrGone).
+	moved := replay()
 	if !moved {
-		moved = replay()
-	}
-	wait := rerouteSpacing
-	if !moved {
-		wait = rerouteCooldown
+		p, _ := f.payload()
 		f.e.log.Warn("debrid media host failed and no other route was found", "release", f.id,
-			"provider", p.Provider, "host", urlHost(failed), "retryAfter", wait)
+			"provider", p.Provider, "host", urlHost(failed), "retryAfter", rerouteSpacing)
 	}
-	f.mu.Lock()
-	f.rerouteAt = f.e.now().Add(wait)
-	f.mu.Unlock()
 	return moved
 }
 
@@ -1331,8 +1264,6 @@ func (f *remoteFile) fetchRun(ctx context.Context, first int64, fls []*blockFlig
 				// Route a stalled body through the same bounded recovery as a
 				// failed connection, preserving the first incomplete offset.
 				f.reroute(reqCtx, p.URL, gen, idx*f.e.block)
-			} else if bodyRetries == 1 {
-				f.moveFromHost(reqCtx, gen)
 			}
 			body, tm, served, err = f.rangeGet(httpCtx, idx*f.e.block, end, mode == fetchUrgent || mode == fetchDurable)
 			if err != nil {
@@ -1716,13 +1647,6 @@ func (f *remoteFile) rangeGet(ctx context.Context, start, end int64, urgent bool
 				// Share its pause across this account's files, return promptly
 				// to source selection, and preserve transient classification.
 				pauseErr := f.pauseMedia(payload.Provider, u, resp.StatusCode, ra)
-				if resp.StatusCode == http.StatusTooManyRequests && attempt == 0 && urgent && !payload.IsDirect() && f.e != nil && f.e.svc != nil && len(f.e.svc.active()) > 1 {
-					if _, _, rerr := f.link(ctx, true, gen); rerr == nil {
-						if np, _ := f.payload(); np.Provider != "" && np.Provider != payload.Provider {
-							continue
-						}
-					}
-				}
 				return nil, tm, servedBy{}, pauseErr
 			}
 			drain(resp)

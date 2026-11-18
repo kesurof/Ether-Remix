@@ -324,7 +324,7 @@ func (f *remoteFile) rerouteWave(ctx context.Context, failed string, usable func
 	p, gen := f.payload()
 	off := min(max(start, 0), f.size-1)
 	changed := true // the first pass always runs; later ones only once the link moved under us
-	for round := 0; round < rerouteLinks && changed; round++ {
+	for round := 0; round < replayRounds && changed; round++ {
 		changed = false
 		fallback := "" // first candidate whose probe earned old main's evidence, kept for last resort
 		approver, ok := cdnReplayApproval(f.e.providerImpl(p.Provider))

@@ -1,7 +1,6 @@
 package debrid
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -11,9 +10,9 @@ import (
 	"time"
 )
 
-// A transport failure must move the same torrent file to another provider,
-// rather than accepting another signature on the unreachable endpoint.
-func TestRefusedHostMovesToSameFileOnAnotherProvider(t *testing.T) {
+// Issue #9: a transport failure on the media host never asks the provider API
+// for a link and never moves the file to another provider.
+func TestRefusedHostDoesNotMoveToAnotherProvider(t *testing.T) {
 	h := newHarness(t, 2<<20, "torbox", "realdebrid")
 	other := newMediaServer(t, 2<<20)
 	h.provs["realdebrid-1"].media = other
@@ -50,23 +49,22 @@ func TestRefusedHostMovesToSameFileOnAnotherProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 	h.media.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	off := int64(1 << 20)
-	n, err := rc.ReadAtContext(ctx, buf, off)
-	if err != nil || n != len(buf) || !bytes.Equal(buf, other.data[off:off+int64(len(buf))]) {
-		t.Fatalf("alternate read n=%d err=%v", n, err)
+	if _, err = rc.ReadAtContext(ctx, buf, off); err == nil {
+		t.Fatal("read succeeded against a closed media host")
 	}
-	if links.Load() != rerouteLinks {
-		t.Fatalf("TorBox regenerated %d links on the refused host, want one wave of %d", links.Load(), rerouteLinks)
+	if links.Load() != 0 {
+		t.Fatalf("TorBox regenerated %d links on the refused host, want none", links.Load())
 	}
 	p, _ := source.(*httpSource).f.payload()
-	if p.Provider != "realdebrid-1" {
-		t.Fatalf("provider did not move: %s", p.Provider)
+	if p.Provider != "torbox-0" || other.requests.Load() != 0 {
+		t.Fatalf("provider moved: %s", p.Provider)
 	}
 }
 
-func TestRefusedHostAcceptsRegeneratedDifferentNode(t *testing.T) {
+func TestRefusedHostDoesNotRegenerateLink(t *testing.T) {
 	h := newHarness(t, 2<<20, "torbox")
 	other := newMediaServer(t, 2<<20)
 	h.cacheEverywhere(testHash)
@@ -97,14 +95,13 @@ func TestRefusedHostAcceptsRegeneratedDifferentNode(t *testing.T) {
 		t.Fatal(err)
 	}
 	h.media.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	off := int64(1 << 20)
-	n, err := rc.ReadAtContext(ctx, buf, off)
-	if err != nil || n != len(buf) || !bytes.Equal(buf, other.data[off:off+int64(len(buf))]) {
-		t.Fatalf("node read n=%d err=%v", n, err)
+	if _, err = rc.ReadAtContext(ctx, buf, off); err == nil {
+		t.Fatal("read succeeded against a closed media host")
 	}
-	if links.Load() != 1 {
+	if links.Load() != 0 || other.requests.Load() != 0 {
 		t.Fatalf("regenerated links=%d", links.Load())
 	}
 }

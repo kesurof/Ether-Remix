@@ -63,9 +63,6 @@ func TestVerifiedFileNeverUsesMagnets(t *testing.T) {
 			if _, err = svc.Refresh(context.Background(), p, true); err != nil {
 				t.Fatal(err)
 			}
-			if _, err = svc.alternateProvider(context.Background(), p); err == nil {
-				t.Fatal("unexpected torrent fallback")
-			}
 			gone = true
 			if _, err = svc.Refresh(context.Background(), p, true); err == nil {
 				t.Fatal("dead refresh accepted")

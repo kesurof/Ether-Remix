@@ -1,7 +1,6 @@
 package debrid
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"net"
@@ -16,7 +15,8 @@ type startupTransport func(*http.Request) (*http.Response, error)
 
 func (f startupTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
-func TestStartupRegeneratesLinkOnDeadCDN(t *testing.T) {
+// Issue #9: a dead CDN node never makes Ether ask for a new link.
+func TestStartupDeadCDNDoesNotRegenerateLink(t *testing.T) {
 	r := newEngineRig(t, 256<<10, -1)
 	r.eng.hc = &http.Client{Transport: startupTransport(func(req *http.Request) (*http.Response, error) {
 		if req.URL.Path == "/m/realdebrid-1" {
@@ -26,20 +26,11 @@ func TestStartupRegeneratesLinkOnDeadCDN(t *testing.T) {
 	})}
 	before := r.provs["realdebrid-0"].callCount("link")
 	ok, err := r.eng.Check(context.Background(), r.pl)
-	if err != nil || !ok {
-		t.Fatalf("dead CDN was retried without a new link: %v", err)
+	if ok || !errors.Is(err, core.ErrSourceUnavailable) || errors.Is(err, core.ErrArticleMissing) {
+		t.Fatalf("dead CDN misclassified: ok=%v err=%v", ok, err)
 	}
-	if got := r.provs["realdebrid-0"].callCount("link") - before; got != rerouteLinks {
-		t.Fatalf("link calls=%d, want one wave of %d", got, rerouteLinks)
-	}
-	src, err := r.eng.Open(context.Background(), r.rel.ID, r.pl)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer src.Close()
-	b := make([]byte, 16)
-	if _, err = src.ReadAt(b, 0); err != nil || !bytes.Equal(b, r.media.data[:16]) {
-		t.Fatalf("refreshed file: %v", err)
+	if got := r.provs["realdebrid-0"].callCount("link") - before; got != 0 {
+		t.Fatalf("link calls=%d, want none", got)
 	}
 }
 
@@ -56,7 +47,7 @@ func TestCDNOutageRefreshIsBoundedAndTransient(t *testing.T) {
 			t.Fatalf("outage misclassified: ok=%v err=%v", ok, err)
 		}
 	}
-	if got := r.provs["realdebrid-0"].callCount("link") - before; got != rerouteLinks {
-		t.Fatalf("outage generated %d links, want one wave of %d", got, rerouteLinks)
+	if got := r.provs["realdebrid-0"].callCount("link") - before; got != 0 {
+		t.Fatalf("outage generated %d links, want none", got)
 	}
 }

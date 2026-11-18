@@ -1,7 +1,6 @@
 package debrid
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -11,10 +10,10 @@ import (
 	"time"
 )
 
-// Issue #396: a TorBox CDN node died mid-stream and requestdl first handed
-// back a link on the same dead node. The file must resume on a fresh link on
-// a live node, same bytes, without a second provider.
-func TestDeadCDNHostReroutesToFreshLinkOnLiveNode(t *testing.T) {
+// Issue #9 (was #396): a TorBox CDN node died mid-stream. Ether never asks
+// requestdl for a fresh link nor for another provider; it only replays the
+// same signed link, so the read fails until the node answers again.
+func TestDeadCDNHostDoesNotAskForFreshLink(t *testing.T) {
 	h := newHarness(t, 4<<20, "torbox")
 	live := newMediaServer(t, 4<<20)
 	h.cacheEverywhere(testHash)
@@ -57,14 +56,17 @@ func TestDeadCDNHostReroutesToFreshLinkOnLiveNode(t *testing.T) {
 		{"background", 1 << 20, source.(*httpSource).ReadAtPrefetchContext},
 		{"viewer", 3 << 20, source.(readAtContexter).ReadAtContext},
 	} {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		n, err := read.fn(ctx, buf, read.off)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		_, err := read.fn(ctx, buf, read.off)
 		cancel()
-		if err != nil || n != len(buf) || !bytes.Equal(buf, live.data[read.off:read.off+int64(len(buf))]) {
-			t.Fatalf("%s read after the node died: n=%d err=%v", read.name, n, err)
+		if err == nil {
+			t.Fatalf("%s read succeeded on a dead node", read.name)
 		}
 	}
-	if got := links.Load(); got != 2 {
-		t.Fatalf("requestdl calls=%d, want 2 (dead node, then a live one)", got)
+	if got := links.Load(); got != 0 {
+		t.Fatalf("requestdl calls=%d, want none", got)
+	}
+	if live.requests.Load() != 0 {
+		t.Fatal("the file moved off its link")
 	}
 }
