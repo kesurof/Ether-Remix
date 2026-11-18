@@ -58,6 +58,7 @@ export const REMIX_UPDATES = [
         "After “picked version unavailable”, a verified file again goes ahead of a remembered add-on stream, and in the fallback order.",
       ],
       ["Plusieurs comptes d’un même service partagent le même cache : après un « pas en cache », les autres comptes ne sont plus interrogés pour cette release. Quota, clé, refus et limite passent toujours au compte suivant.", "Accounts of the same service share one cache: after a “not cached” answer, the other accounts are not asked about that release. Quota, key, refusal and limit still move on to the next account."],
+      ["Sources → Debrid : « Garder le lien et réessayer » évite de redemander un lien ou un autre fournisseur quand le serveur média tombe en panne pendant une lecture, et épargne le quota de liens d’un compte partagé. Le comportement actuel reste le choix par défaut. Dans ce mode, un lien réellement mort est renouvelé au plus toutes les 30 secondes par fichier.", "Sources → Debrid: “Keep the link and retry” avoids asking for a new link or another provider when the media server fails during playback, sparing a shared account's link quota. The current behaviour stays the default. In that mode, a really dead link is renewed at most every 30 seconds per file."],
     ],
   },
   {

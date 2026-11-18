@@ -1,1 +1,5 @@
+<<<<<<<< HEAD:internal/admin/dist/assets/merge-C5qvWgGY.js
 import{l as e}from"./toast-DLT4Yu0M.js";var t={name:`merge`,size:24,node:[[`path`,{d:`m8 6 4-4 4 4`,key:`ybng9g`}],[`path`,{d:`M12 2v10.3a4 4 0 0 1-1.172 2.872L4 22`,key:`1hyw0i`}],[`path`,{d:`m20 22-5-5`,key:`1m27yz`}]]};t.node;var n=e(t);export{n as t};
+========
+import{l as e}from"./toast-Cqf4MR5t.js";var t={name:`merge`,size:24,node:[[`path`,{d:`m8 6 4-4 4 4`,key:`ybng9g`}],[`path`,{d:`M12 2v10.3a4 4 0 0 1-1.172 2.872L4 22`,key:`1hyw0i`}],[`path`,{d:`m20 22-5-5`,key:`1m27yz`}]]};t.node;var n=e(t);export{n as t};
+>>>>>>>> origin/amont/relien-lecture-reglable:internal/admin/dist/assets/merge-D8jV8Ivt.js

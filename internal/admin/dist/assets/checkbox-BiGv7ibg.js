@@ -1,0 +1,5 @@
+<<<<<<<< HEAD:internal/admin/dist/assets/checkbox-DlQ8017U.js
+import{o as e,s as t}from"./proxy-B4y0dcMr.js";import{h as n,x as r}from"./i18n-DptxkR6B.js";var i=e(),a=r(n(),1).forwardRef(({className:e,...n},r)=>(0,i.jsx)(`input`,{ref:r,type:`checkbox`,className:t(`size-4 shrink-0 rounded border-border accent-primary`,`focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg`,`disabled:cursor-not-allowed disabled:opacity-50`,e),...n}));a.displayName=`Checkbox`;export{a as t};
+========
+import{o as e,s as t}from"./proxy-BIKIJyFV.js";import{h as n,x as r}from"./i18n-BYr4S75p.js";var i=e(),a=r(n(),1).forwardRef(({className:e,...n},r)=>(0,i.jsx)(`input`,{ref:r,type:`checkbox`,className:t(`size-4 shrink-0 rounded border-border accent-primary`,`focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg`,`disabled:cursor-not-allowed disabled:opacity-50`,e),...n}));a.displayName=`Checkbox`;export{a as t};
+>>>>>>>> origin/amont/relien-lecture-reglable:internal/admin/dist/assets/checkbox-BiGv7ibg.js
