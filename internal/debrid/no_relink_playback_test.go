@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 )
 
 func totalProviderCalls(r *engineRig) int {
@@ -72,5 +73,23 @@ func TestGoneLinkIsStillRenewed(t *testing.T) {
 	}
 	if r.provs["realdebrid-0"].callCount("link") <= links {
 		t.Fatal("expired link was not renewed")
+	}
+}
+
+// Issue #9: two dead-link refreshes of one file are at least relinkFloor
+// apart, even when the host alternates refusals and good answers.
+func TestDeadLinkRefreshIsPaced(t *testing.T) {
+	now := time.Date(2026, 11, 18, 20, 0, 0, 0, time.UTC)
+	f := &remoteFile{e: &Engine{now: func() time.Time { return now }}}
+	if !f.relinkDue() {
+		t.Fatal("first refresh refused")
+	}
+	now = now.Add(relinkFloor - time.Second)
+	if f.relinkDue() {
+		t.Fatal("second refresh allowed inside the floor")
+	}
+	now = now.Add(2 * time.Second)
+	if !f.relinkDue() {
+		t.Fatal("refresh refused after the floor")
 	}
 }

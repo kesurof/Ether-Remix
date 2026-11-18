@@ -570,6 +570,7 @@ type remoteFile struct {
 	pl             Payload
 	gen            int
 	linkFails      int                  // link generations that failed in a row
+	relinkAt       time.Time            // earliest next dead-link refresh (issue #9)
 	failedGen      int                  // last generation counted in linkFails (-1 = none)
 	replayAt       time.Time            // replay probes have their own pacing, independent of API backoff
 	edgeProbeAfter map[string]time.Time // failed probes are specific to this file and signed URL
@@ -792,7 +793,7 @@ func (f *remoteFile) reroute(ctx context.Context, failed string, gen int, start 
 	if p, g := f.payload(); g != gen && usable(p.URL) {
 		return true
 	}
-	replay := func() bool {
+	replay := func() (moved, ran bool) {
 		p, _ := f.payload()
 		f.mu.Lock()
 		replayKey := p.Provider + "|" + p.URL
@@ -803,7 +804,7 @@ func (f *remoteFile) reroute(ctx context.Context, failed string, gen int, start 
 		}
 		f.mu.Unlock()
 		if !due || ctx.Err() != nil {
-			return false
+			return false, false
 		}
 		rctx, cancel := context.WithTimeout(ctx, rerouteBudget)
 		moved, replayed := f.resumeOnAnotherEdge(rctx, failed, usable, start)
@@ -817,20 +818,36 @@ func (f *remoteFile) reroute(ctx context.Context, failed string, gen int, start 
 			f.e.log.Info("debrid media link replayed on an approved edge", "release", f.id,
 				"failedHost", urlHost(failed), "host", urlHost(np.URL))
 		}
-		return moved
+		return moved, true
 	}
 	// Issue #9: a file that was launched reads to the end on its link. A
 	// media host failure (5xx, cut, slow) never asks the provider API for a
 	// new link or another provider; only the same signed link is replayed,
 	// paced by rerouteSpacing (replayAt). Dead or expired links take
 	// the separate refresh path (HTTP 401/403/404/410, ErrGone).
-	moved := replay()
-	if !moved {
+	moved, ran := replay()
+	if !moved && ran {
 		p, _ := f.payload()
 		f.e.log.Warn("debrid media host failed and no other route was found", "release", f.id,
 			"provider", p.Provider, "host", urlHost(failed), "retryAfter", rerouteSpacing)
 	}
 	return moved
+}
+
+// relinkFloor spaces two dead-link refreshes of one file (issue #9).
+const relinkFloor = 30 * time.Second
+
+// relinkDue reports whether a dead link may be replaced now, and books
+// the slot when it may.
+func (f *remoteFile) relinkDue() bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	now := f.e.now()
+	if !f.relinkAt.IsZero() && now.Before(f.relinkAt) {
+		return false
+	}
+	f.relinkAt = now.Add(relinkFloor)
+	return true
 }
 
 // kickDiscovery starts one bounded hunt for a flowing route if the file
@@ -1608,6 +1625,20 @@ func (f *remoteFile) rangeGet(ctx context.Context, start, end int64, urgent bool
 			if fails > maxLinkFailures {
 				return nil, tm, servedBy{}, directMediaError(payload, fmt.Errorf("debrid: link for %s keeps failing (HTTP %d): %w", f.name(), resp.StatusCode, core.ErrArticleMissing))
 			}
+			if !f.relinkDue() {
+				// Issue #9: at most one fresh link per relinkFloor, even
+				// when a host alternates refusals and good answers. A
+				// paced answer still counts toward the dead-link limit.
+				f.mu.Lock()
+				f.linkFails++
+				fails = f.linkFails
+				f.mu.Unlock()
+				if fails > maxLinkFailures {
+					return nil, tm, servedBy{}, directMediaError(payload, fmt.Errorf("debrid: link for %s keeps failing (HTTP %d): %w", f.name(), resp.StatusCode, core.ErrArticleMissing))
+				}
+				lastErr = fmt.Errorf("HTTP %d (fresh link paced)", resp.StatusCode)
+				continue
+			}
 			if _, _, err := f.link(ctx, true, gen); err != nil {
 				return nil, tm, servedBy{}, err
 			}
@@ -1673,6 +1704,20 @@ func (f *remoteFile) rangeGet(ctx context.Context, start, end int64, urgent bool
 			f.mu.Unlock()
 			if fails > maxLinkFailures {
 				return nil, tm, servedBy{}, fmt.Errorf("debrid: link for %s keeps failing (HTTP %d): %w", f.name(), resp.StatusCode, core.ErrArticleMissing)
+			}
+			if !f.relinkDue() {
+				// Issue #9: at most one fresh link per relinkFloor, even
+				// when a host alternates refusals and good answers. A
+				// paced answer still counts toward the dead-link limit.
+				f.mu.Lock()
+				f.linkFails++
+				fails = f.linkFails
+				f.mu.Unlock()
+				if fails > maxLinkFailures {
+					return nil, tm, servedBy{}, fmt.Errorf("debrid: link for %s keeps failing (HTTP %d): %w", f.name(), resp.StatusCode, core.ErrArticleMissing)
+				}
+				lastErr = fmt.Errorf("HTTP %d (fresh link paced)", resp.StatusCode)
+				continue
 			}
 			if _, _, err := f.link(ctx, true, gen); err != nil {
 				return nil, tm, servedBy{}, err
