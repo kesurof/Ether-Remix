@@ -96,8 +96,15 @@ func (m *Manager) openInitial(ctx context.Context, s *session, profile core.Qual
 			if err == nil && pick != nil && pick.MatchesVersion(s.prefer) {
 				res = pick
 			} else if err == nil || errors.Is(err, core.ErrNotAvailable) {
-				res, cached, fromResume = auto, facts, remembered
-				m.notePreferenceStale(s.ident.key, s.prefer, auto.Release.ID)
+				if m.verifiedFilesFirst() && isAddonStream(auto.Release) {
+					// The remembered choice (warm-up or resume) is an add-on
+					// stream, made before a verified file could lead: rank
+					// afresh below instead of replaying it (verified_first.go).
+					m.log.Info("remembered choice is an add-on stream; ranking afresh for a verified file", "key", s.ident.key, "release", auto.Release.ID)
+				} else {
+					res, cached, fromResume = auto, facts, remembered
+					m.notePreferenceStale(s.ident.key, s.prefer, auto.Release.ID)
+				}
 			} else {
 				return nil, err
 			}
@@ -113,6 +120,9 @@ func (m *Manager) openInitial(ctx context.Context, s *session, profile core.Qual
 		// allUncached: every release that failed to open was a torrent
 		// no debrid account could serve (uncached, blocked, add refused).
 		allUncached = true
+		// debridDown: a debrid account error (quota, key) was seen, so no
+		// other release that depends on the account is worth trying.
+		debridDown bool
 	)
 	defer func() {
 		if fallbackGen != nil {
@@ -124,7 +134,7 @@ func (m *Manager) openInitial(ctx context.Context, s *session, profile core.Qual
 		info.Size = size
 		return info
 	}
-	for attempt := 0; attempt < m.opts.MaxAttempts; attempt++ {
+	for attempt := 0; attempt < m.failoverAttempts(); attempt++ {
 		if res == nil {
 			fromResume = false
 			var err error
@@ -135,7 +145,7 @@ func (m *Manager) openInitial(ctx context.Context, s *session, profile core.Qual
 				// the opening prefetch is not wasted on another release, and
 				// stop asking for the pick on every open.
 				m.notePreferenceStale(s.ident.key, s.prefer, res.Release.ID)
-				if auto, autoCached, autoResume := m.preparedResolution(ctx, s, profile, original, ""); auto != nil {
+				if auto, autoCached, autoResume := m.preparedResolution(ctx, s, profile, original, ""); auto != nil && !m.verifiedFileOutranks(res.Release, auto.Release) {
 					res, cached, fromResume = auto, autoCached, autoResume
 				}
 			}
@@ -158,6 +168,9 @@ func (m *Manager) openInitial(ctx context.Context, s *session, profile core.Qual
 					if errors.Is(lastErr, core.ErrDebridAuth) {
 						return nil, fmt.Errorf("%w (last failure: %v): %w", err, lastErr, core.ErrDebridAuth)
 					}
+					if errors.Is(lastErr, core.ErrDebridQuota) {
+						return nil, fmt.Errorf("%w (last failure: %v): %w", err, lastErr, core.ErrDebridQuota)
+					}
 					if !errors.Is(err, core.ErrNotCached) && !errors.Is(err, core.ErrNoSources) {
 						switch {
 						case errors.Is(lastErr, context.DeadlineExceeded):
@@ -170,6 +183,15 @@ func (m *Manager) openInitial(ctx context.Context, s *session, profile core.Qual
 				}
 				return nil, err
 			}
+		}
+		if debridDown && dependsOnDebrid(res.Release) {
+			// The account is out (quota, key): no provider call is made for
+			// this release or the other debrid ones, only what does not
+			// depend on the account is still tried (within the attempt cap).
+			tried = append(tried, res.Release.ID)
+			alternates = withoutDebrid(res.Alternates)
+			res, cached, fromResume = nil, nil, false
+			continue
 		}
 		if s.caps.BroadcastReadyRelease != "" && cached == nil {
 			cached = m.persistedProbe(ctx, s.ident.userID, s.ident.key, res.Release.ID, res.NZB)
@@ -268,6 +290,10 @@ func (m *Manager) openInitial(ctx context.Context, s *session, profile core.Qual
 		if len(res.Alternates) > 0 {
 			alternates = res.Alternates
 		}
+		if accountError(err) {
+			debridDown = true
+			alternates = withoutDebrid(alternates)
+		}
 		res, cached, fromResume = nil, nil, false
 	}
 	if fallbackGen != nil {
@@ -293,6 +319,8 @@ func releasesFailed(n int, lastErr error, allUncached bool) error {
 		return fmt.Errorf("%d releases failed: %w", n, lastErr)
 	case errors.Is(lastErr, core.ErrDebridAuth):
 		return fmt.Errorf("%w: %d releases failed (last: %v): %w", core.ErrNotAvailable, n, lastErr, core.ErrDebridAuth)
+	case errors.Is(lastErr, core.ErrDebridQuota):
+		return fmt.Errorf("%w: %d releases failed (last: %v): %w", core.ErrNotAvailable, n, lastErr, core.ErrDebridQuota)
 	case allUncached && n > 0:
 		// Keep the typed last cause, including queued/refused/limit and
 		// UncachedError's settings, for the protocol adapter to explain.
@@ -326,7 +354,7 @@ func (m *Manager) nextResolution(ctx context.Context, s *session, tried []string
 			if alt.ID == "" || !m.ownerPinAllows(s, alt.ID) || !m.channelSourceAllowed(s, alt) || m.titleReleaseRejected(ctx, s.ident.key, alt) || m.releaseNamesakeRejected(ctx, s, alt) || slices.Contains(tried, alt.ID) || !releaseMatchesTitle(alt, s.title) {
 				continue
 			}
-			if fetched >= m.opts.MaxAttempts {
+			if fetched >= m.failoverAttempts() {
 				return nil, fetchErr
 			}
 			fetched++
@@ -349,7 +377,7 @@ func (m *Manager) nextResolution(ctx context.Context, s *session, tried []string
 				ResolvedAt: m.now(),
 			}, nil
 		}
-		if fetchErr != nil && fetched >= m.opts.MaxAttempts {
+		if fetchErr != nil && fetched >= m.failoverAttempts() {
 			return nil, fetchErr
 		}
 	}
@@ -974,6 +1002,16 @@ func (m *Manager) failoverWith(ctx context.Context, s *session, observed *genera
 	if failovers >= m.opts.MaxFailovers {
 		return nil, fmt.Errorf("%w: session %s gave up after %d failovers", core.ErrNotAvailable, s.id, failovers)
 	}
+	if err := s.recentFailoverFailure(observed, m.now()); err != nil {
+		// The same source failed again moments after a failover found
+		// nothing: repeat the answer, not the search (retry_window.go).
+		return nil, err
+	}
+	defer func() {
+		if retErr != nil && ctx.Err() == nil {
+			s.noteFailoverFailure(observed, retErr, m.now())
+		}
+	}()
 	log := m.log.With("session", s.id, "key", s.ident.key, "at", at)
 	log.Warn("failing over", "release", cur.res.Release.Name, "reason", fo.reason, "down", fo.down)
 	// A provider outage is not evidence that the release itself is invalid.
@@ -1041,6 +1079,7 @@ func (m *Manager) failoverWith(ctx context.Context, s *session, observed *genera
 			}
 		}
 	}
+	raceFailed, debridDown := 0, false
 	if g == nil && !direct && prepared == nil {
 		// Any healthy alternate continues an encoder session, so open
 		// several at once instead of stalling through each broken one.
@@ -1073,9 +1112,15 @@ func (m *Manager) failoverWith(ctx context.Context, s *session, observed *genera
 			return nil, ctx.Err()
 		}
 		tried = append(tried, failed...)
+		raceFailed = len(failed)
+		if accountError(lastErr) {
+			debridDown = true
+			alternates = withoutDebrid(alternates)
+		}
 	}
 	var copySearchCtx context.Context
-	for attempt := 0; g == nil && attempt < m.opts.MaxAttempts; attempt++ {
+	// Releases the race already tried count against the same cap.
+	for attempt := raceFailed; g == nil && attempt < m.failoverAttempts(); attempt++ {
 		attemptCtx := ctx
 		if copySearchCtx != nil {
 			attemptCtx = copySearchCtx
@@ -1097,6 +1142,14 @@ func (m *Manager) failoverWith(ctx context.Context, s *session, observed *genera
 		if err != nil {
 			lastErr = err
 			break
+		}
+		if debridDown && dependsOnDebrid(res.Release) {
+			// The account is out (quota, key): no provider call is made for
+			// this release or the other debrid ones, only what does not
+			// depend on the account is still tried (within the attempt cap).
+			tried = append(tried, res.Release.ID)
+			alternates = withoutDebrid(res.Alternates)
+			continue
 		}
 		g, err = m.openGeneration(attemptCtx, s, res, fallback)
 		if err == nil {
@@ -1173,6 +1226,10 @@ func (m *Manager) failoverWith(ctx context.Context, s *session, observed *genera
 		tried = append(tried, res.Release.ID)
 		if len(res.Alternates) > 0 {
 			alternates = res.Alternates
+		}
+		if accountError(err) {
+			debridDown = true
+			alternates = withoutDebrid(alternates)
 		}
 		if direct {
 			alternates = orderExactSizeFirst(alternates, cur.res.Release)
