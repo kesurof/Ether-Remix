@@ -369,13 +369,13 @@ func (e *entry) blocked(now time.Time) error {
 		if now.Before(e.until) {
 			return fmt.Errorf("debrid provider %q: daily quota reached, new try at %s (%s): %w", displayName(e.cfg), e.until.Format("15:04"), e.lastError, ErrQuotaExceeded)
 		}
-		// Half-open: one test request goes through, the others wait for its
-		// answer (observe), or for its lease to run out.
-		if e.probeAt.IsZero() || now.Sub(e.probeAt) >= quotaProbeLease {
-			e.probeAt = now
-			return nil
+		// Half-open: the single test request is reserved by begin, right
+		// before the real call. blocked only reads, so filters that never
+		// call the provider (cache checks, listings) cannot use it up.
+		if !e.probeAt.IsZero() && now.Sub(e.probeAt) < quotaProbeLease {
+			return fmt.Errorf("debrid provider %q: daily quota reached, one test request is checking it: %w", displayName(e.cfg), ErrQuotaExceeded)
 		}
-		return fmt.Errorf("debrid provider %q: daily quota reached, one test request is checking it: %w", displayName(e.cfg), ErrQuotaExceeded)
+		return nil
 	}
 	if now.Before(e.until) {
 		if e.state == "auth_failed" {
@@ -391,6 +391,38 @@ func (e *entry) blocked(now time.Time) error {
 func (e *entry) acquire(ctx context.Context) error { return e.sem.acquire(ctx) }
 
 func (e *entry) release() { e.sem.release() }
+
+// begin takes a concurrency slot for a real provider call and, after a quota
+// pause, reserves the single test request (probe=true). The reservation is
+// made once the slot is held, so waiting for a slot cannot outlast its lease.
+// Every successful begin is paired with finish.
+func (e *entry) begin(ctx context.Context, now time.Time) (probe bool, err error) {
+	if err := e.sem.acquire(ctx); err != nil {
+		return false, err
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.state != stateQuota {
+		return false, nil
+	}
+	if now.Before(e.until) || (!e.probeAt.IsZero() && now.Sub(e.probeAt) < quotaProbeLease) {
+		e.sem.release()
+		return false, fmt.Errorf("debrid provider %q: daily quota reached, new try at %s: %w", displayName(e.cfg), e.until.Format("15:04"), ErrQuotaExceeded)
+	}
+	e.probeAt = now
+	return true, nil
+}
+
+// finish ends a call started by begin. A test request that reported nothing
+// (an unsupported operation, a cancelled caller) frees the reservation.
+func (e *entry) finish(probe bool) {
+	if probe {
+		e.mu.Lock()
+		e.probeAt = time.Time{}
+		e.mu.Unlock()
+	}
+	e.sem.release()
+}
 
 // observe updates the breaker after a provider call. It returns the new
 // pause when the call put the provider into back-off, a clear event when a
@@ -703,23 +735,30 @@ func (s *Service) CheckCached(ctx context.Context, hashes []string) (map[string]
 		if len(ask) == 0 {
 			continue
 		}
-		if err := e.acquire(ctx); err != nil {
-			return out, false
+		probe, err := e.begin(ctx, s.now())
+		if err != nil {
+			definitive = false
+			if ctx.Err() != nil {
+				return out, false
+			}
+			continue
 		}
 		cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		res, err := e.p.CheckCached(cctx, ask)
 		cancel()
-		e.release()
 		if errors.Is(err, ErrUnsupported) {
+			e.finish(probe) // no call was made: a quota test is not spent
 			definitive = false
 			continue
 		}
 		if err != nil && ctx.Err() != nil {
 			// A caller's short discovery budget says nothing about the
 			// provider's availability. Do not open its circuit for that.
+			e.finish(probe)
 			return out, false
 		}
 		s.observe(e, err)
+		e.finish(probe)
 		if err != nil {
 			definitive = false
 			continue
@@ -876,7 +915,7 @@ func (s *Service) Acquire(ctx context.Context, rel core.Release) ([]byte, error)
 		}
 		return nil, fmt.Errorf("%q: %w (%v)", rel.Name, core.ErrNotCached, errors.Join(errs...))
 	}
-	return nil, errors.Join(errs...)
+	return nil, s.joinProviderErrors(errs)
 }
 
 // queuedTTL is how long a title's queued download stands for the title: other
@@ -1072,7 +1111,7 @@ func (s *Service) QueueDownload(ctx context.Context, rel core.Release) ([]byte, 
 		errs = append(errs, fmt.Errorf("%s: %w", displayName(e.cfg), err))
 	}
 	s.forgetQueued(rel, hash)
-	joined := errors.Join(errs...)
+	joined := s.joinProviderErrors(errs)
 	s.log.Info("uncached torrent not sent to download", "release", rel.Name, "err", joined)
 	for _, err := range errs {
 		if errors.Is(err, core.ErrDownloadLimit) {
@@ -1099,11 +1138,12 @@ func (s *Service) acquireOn(ctx context.Context, e *entry, base Payload, choose 
 			"queue", queueDuration, "find", findDuration, "ready", readyDuration,
 			"link", linkDuration, "took", time.Since(wallStarted))
 	}()
-	if err := e.acquire(ctx); err != nil {
+	probe, err := e.begin(ctx, s.now())
+	if err != nil {
 		return Payload{}, err
 	}
 	queueDuration = time.Since(wallStarted)
-	defer e.release()
+	defer e.finish(probe)
 	// A caller's own budget (a resolver candidate check, say) ending says
 	// nothing about the provider; only the provider's outcomes, including
 	// its own providerOpTimeout, move the breaker.
@@ -1368,7 +1408,7 @@ func (s *Service) Refresh(ctx context.Context, p Payload, force bool) (Payload, 
 		if len(errs) == 0 {
 			return p, ErrNoProvider
 		}
-		return p, errors.Join(errs...)
+		return p, s.joinProviderErrors(errs)
 	}
 	// Another provider may hold the same torrent.
 	for _, e := range s.active() {
@@ -1388,7 +1428,7 @@ func (s *Service) Refresh(ctx context.Context, p Payload, force bool) (Payload, 
 		}
 		note(err)
 	}
-	joined := errors.Join(errs...)
+	joined := s.joinProviderErrors(errs)
 	if joined == nil {
 		joined = ErrNoProvider
 	}
@@ -1427,7 +1467,8 @@ func (s *Service) alternateProvider(ctx context.Context, p Payload) (Payload, er
 
 // relink regenerates a link on the payload's own provider.
 func (s *Service) relink(ctx context.Context, e *entry, p Payload) (Payload, error) {
-	if err := e.acquire(ctx); err != nil {
+	probe, err := e.begin(ctx, s.now())
+	if err != nil {
 		return p, err
 	}
 	lctx, cancel := context.WithTimeout(ctx, providerOpTimeout)
@@ -1438,7 +1479,7 @@ func (s *Service) relink(ctx context.Context, e *entry, p Payload) (Payload, err
 		s.observe(e, err)
 	}
 	cancel()
-	e.release()
+	e.finish(probe)
 	if err == nil {
 		s.noteLatency(e.cfg.ID, func(l *Latency) { l.LinkMs = ewma(l.LinkMs, ms(s.now().Sub(start)), l.Samples == 0) })
 		// The provider re-signed the link: it stands on the host the
