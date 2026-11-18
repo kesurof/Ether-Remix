@@ -12,13 +12,14 @@ import (
 const defaultFailoverAttempts = 3
 
 // failoverAttempts is the cap on the releases one open or failover tries:
-// resolver.failoverAttempts (default 3), never above Options.MaxAttempts.
+// resolver.failoverAttempts (1 to 10, validated by the admin API), default 3.
+// It replaces Options.MaxAttempts, which no longer bounds these loops.
 func (m *Manager) failoverAttempts() int {
 	n := m.config().Resolver.FailoverAttempts
 	if n <= 0 {
 		n = defaultFailoverAttempts
 	}
-	return min(n, m.opts.MaxAttempts)
+	return n
 }
 
 // accountError reports a failure of the whole debrid account (quota reached,
@@ -34,6 +35,10 @@ func accountError(err error) bool {
 func dependsOnDebrid(rel core.Release) bool {
 	return rel.Protocol == core.ProtocolTorrent || core.IsVerifiedFile(rel) || (rel.Protocol == core.ProtocolHTTP && rel.StreamDebrid != "")
 }
+
+// maxDebridSkips bounds how many debrid releases a search steps over after an
+// account error before the attempt gives up (each skip costs one resolve).
+const maxDebridSkips = 8
 
 // withoutDebrid drops the releases that depend on a debrid account.
 func withoutDebrid(rels []core.Release) []core.Release {

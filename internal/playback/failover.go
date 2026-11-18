@@ -84,6 +84,12 @@ func (m *Manager) openInitial(ctx context.Context, s *session, profile core.Qual
 		original = s.title.Language
 	}
 	res, cached, fromResume := m.preparedResolution(ctx, s, profile, original, s.prefer)
+	if res != nil && s.prefer == "" && m.verifiedFilesFirst() && isAddonStream(res.Release) {
+		// A warm-up or resume on an add-on stream was made without the
+		// verified file that may lead now: rank afresh (verified_first.go).
+		m.log.Info("remembered choice is an add-on stream; ranking afresh for a verified file", "key", s.ident.key, "release", res.Release.ID)
+		res, cached, fromResume = nil, nil, false
+	}
 	if res == nil && s.prefer != "" && !s.exact {
 		if auto, facts, remembered := m.preparedResolution(ctx, s, profile, original, ""); auto != nil {
 			// Resolve only the explicit pick. Resolving a fresh automatic
@@ -122,7 +128,8 @@ func (m *Manager) openInitial(ctx context.Context, s *session, profile core.Qual
 		allUncached = true
 		// debridDown: a debrid account error (quota, key) was seen, so no
 		// other release that depends on the account is worth trying.
-		debridDown bool
+		debridDown  bool
+		debridSkips int
 	)
 	defer func() {
 		if fallbackGen != nil {
@@ -188,9 +195,15 @@ func (m *Manager) openInitial(ctx context.Context, s *session, profile core.Qual
 			// The account is out (quota, key): no provider call is made for
 			// this release or the other debrid ones, only what does not
 			// depend on the account is still tried (within the attempt cap).
+			// Stepping over it does not spend an attempt, so a release that
+			// does not need the account stays reachable; the number of
+			// skipped releases is bounded (each skip costs one resolve).
 			tried = append(tried, res.Release.ID)
 			alternates = withoutDebrid(res.Alternates)
 			res, cached, fromResume = nil, nil, false
+			if debridSkips++; debridSkips <= maxDebridSkips {
+				attempt--
+			}
 			continue
 		}
 		if s.caps.BroadcastReadyRelease != "" && cached == nil {
@@ -1079,7 +1092,7 @@ func (m *Manager) failoverWith(ctx context.Context, s *session, observed *genera
 			}
 		}
 	}
-	raceFailed, debridDown := 0, false
+	raceFailed, debridDown, debridSkips := 0, false, 0
 	if g == nil && !direct && prepared == nil {
 		// Any healthy alternate continues an encoder session, so open
 		// several at once instead of stalling through each broken one.
@@ -1149,6 +1162,9 @@ func (m *Manager) failoverWith(ctx context.Context, s *session, observed *genera
 			// depend on the account is still tried (within the attempt cap).
 			tried = append(tried, res.Release.ID)
 			alternates = withoutDebrid(res.Alternates)
+			if debridSkips++; debridSkips <= maxDebridSkips {
+				attempt--
+			}
 			continue
 		}
 		g, err = m.openGeneration(attemptCtx, s, res, fallback)

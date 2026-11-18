@@ -23,8 +23,8 @@ func TestFailoverAttemptsCap(t *testing.T) {
 	}
 	cfg.Resolver.FailoverAttempts = 10
 	h.m.SetConfig(cfg)
-	if got := h.m.failoverAttempts(); got != h.m.opts.MaxAttempts {
-		t.Fatalf("plafonné par MaxAttempts: %d", got)
+	if got := h.m.failoverAttempts(); got != 10 {
+		t.Fatalf("réglage 10 appliqué tel quel: %d", got)
 	}
 }
 
@@ -160,5 +160,53 @@ func TestVerifiedFileOutranksRemembered(t *testing.T) {
 	h.m.SetConfig(cfg)
 	if h.m.verifiedFileOutranks(vf, addon) {
 		t.Fatal("verifiedFiles=off ignoré")
+	}
+}
+
+// A debrid release skipped after an account error does not spend an attempt:
+// a Usenet release behind several of them is still reached.
+func TestSkippedDebridReleasesDoNotSpendAttempts(t *testing.T) {
+	quota := fmt.Errorf("alldebrid: %w", core.ErrDebridQuota)
+	rels := []*fakeRelease{
+		{ID: "t1", Name: "t1.mkv", Size: 1 << 20, Duration: time.Minute, OpenErr: quota},
+		{ID: "t2", Name: "t2.mkv", Size: 1 << 20, Duration: time.Minute},
+		{ID: "t3", Name: "t3.mkv", Size: 1 << 20, Duration: time.Minute},
+		{ID: "t4", Name: "t4.mkv", Size: 1 << 20, Duration: time.Minute},
+		{ID: "u1", Name: "u1.mkv", Size: 1 << 20, Duration: time.Minute},
+	}
+	h := newHarness(t, rels, []string{"t1", "t2", "t3", "t4", "u1"})
+	for i := range h.resolver.candidates {
+		if h.resolver.candidates[i].ID != "u1" {
+			h.resolver.candidates[i].Protocol = core.ProtocolTorrent
+		}
+	}
+	ps, err := h.m.Prepare(context.Background(), owner, movieKey, defaultCaps("c"))
+	if err != nil || ps.Resolution.Release.ID != "u1" {
+		t.Fatalf("la release Usenet doit être atteinte: %v %+v", err, ps)
+	}
+	if n := h.engine.openCount(); n != 2 {
+		t.Fatalf("%d ouvertures, attendu 2 (t1 puis u1)", n)
+	}
+}
+
+// With verifiedFiles "first", a warm-up or resume on an add-on stream gives
+// way to a fresh ranking even without a picked version.
+func TestRememberedAddonWithoutPickGivesWayToVerifiedFile(t *testing.T) {
+	verified := core.Release{ID: core.VerifiedFileIDPrefix + "y", GUID: core.VerifiedFileIDPrefix + "y", Name: "Alko", Size: 100_000, Protocol: core.ProtocolHTTP, StreamDebrid: "alldebrid", StreamURL: "https://alldebrid.com/f/def"}
+	h := newHarness(t, []*fakeRelease{mkv("A", 100_000, time.Minute), mkv(verified.ID, 100_000, time.Minute)}, []string{"A"})
+	h.resolver.candidates[0].Protocol, h.resolver.candidates[0].StreamURL = core.ProtocolHTTP, "https://addon.example/stream"
+	caps := defaultCaps("c1")
+	first, err := h.m.Prepare(context.Background(), owner, movieKey, caps)
+	if err != nil || first.Resolution.Release.ID != "A" {
+		t.Fatalf("first play: %v", err)
+	}
+	h.m.waitResumeSaves()
+	h.m.Stop(first.ID)
+	h.resolver.mu.Lock()
+	h.resolver.candidates = append([]core.Release{verified}, h.resolver.candidates...)
+	h.resolver.mu.Unlock()
+	ps, err := h.m.Prepare(context.Background(), owner, movieKey, caps)
+	if err != nil || ps.Resolution.Release.ID != verified.ID {
+		t.Fatalf("attendu le fichier vérifié: %v %+v", err, ps)
 	}
 }
