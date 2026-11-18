@@ -385,6 +385,7 @@ export interface EtherConfig {
     healthRace?: number;
     sourcePreference?: string;
     verifiedFiles?: string;
+    failoverAttempts?: number;
     sourceOrder?: { families?: string[]; content?: Record<string, string[]> };
     sourceAlwaysFirst?: boolean;
     customFormats?: CustomFormatDefinition[] | null;
