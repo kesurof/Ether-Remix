@@ -57,6 +57,7 @@ export const REMIX_UPDATES = [
         "Après « version choisie indisponible », un fichier vérifié passe de nouveau devant un flux d’add-on mémorisé, et dans l’ordre de secours.",
         "After “picked version unavailable”, a verified file again goes ahead of a remembered add-on stream, and in the fallback order.",
       ],
+      ["Plusieurs comptes d’un même service partagent le même cache : après un « pas en cache », les autres comptes ne sont plus interrogés pour cette release. Quota, clé, refus et limite passent toujours au compte suivant.", "Accounts of the same service share one cache: after a “not cached” answer, the other accounts are not asked about that release. Quota, key, refusal and limit still move on to the next account."],
     ],
   },
   {
