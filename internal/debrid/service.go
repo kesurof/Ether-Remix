@@ -45,6 +45,13 @@ const (
 	providerParallel   = 4
 	authBackoff        = 15 * time.Minute
 	maxBackoff         = 5 * time.Minute
+	// quotaPause is how long a provider whose account reached its daily
+	// quota is left alone before a single test request.
+	quotaPause = time.Hour
+	// quotaProbeLease bounds a half-open test whose caller never reported a
+	// result (a filter check that made no call): another test may then run.
+	quotaProbeLease = providerOpTimeout + 15*time.Second
+	stateQuota      = "quota_exceeded"
 	// linkMargin is how long before expiry a link counts as stale.
 	linkMargin = 2 * time.Minute
 )
@@ -123,10 +130,13 @@ type entry struct {
 	err error // construction error (missing key, unknown kind)
 	sem *limiter
 
-	mu        sync.Mutex
-	failures  int
-	until     time.Time
-	state     string // "", "backoff", "auth_failed"
+	mu       sync.Mutex
+	failures int
+	until    time.Time
+	state    string // "", "backoff", "auth_failed", "quota_exceeded"
+	// probeAt is when the single half-open test after a quota pause was
+	// let through (zero: none running).
+	probeAt   time.Time
 	lastError string
 	stats     ProviderStats
 	// Add refusals (ErrAddRefused): consecutive count, the latest, and the
@@ -192,7 +202,7 @@ type ProviderStats struct {
 	Kind           string     `json:"kind"`
 	Enabled        bool       `json:"enabled"`
 	Priority       int        `json:"priority"`
-	State          string     `json:"state"` // ok, backoff, auth_failed, disabled
+	State          string     `json:"state"` // ok, backoff, auth_failed, quota_exceeded, disabled
 	LastError      string     `json:"lastError,omitempty"`
 	BackoffUntil   *time.Time `json:"backoffUntil,omitempty"`
 	Requests       int64      `json:"requests"`
@@ -355,6 +365,18 @@ func (s *Service) Enabled() bool { return len(s.active()) > 0 }
 func (e *entry) blocked(now time.Time) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if e.state == stateQuota {
+		if now.Before(e.until) {
+			return fmt.Errorf("debrid provider %q: daily quota reached, new try at %s (%s): %w", displayName(e.cfg), e.until.Format("15:04"), e.lastError, ErrQuotaExceeded)
+		}
+		// Half-open: one test request goes through, the others wait for its
+		// answer (observe), or for its lease to run out.
+		if e.probeAt.IsZero() || now.Sub(e.probeAt) >= quotaProbeLease {
+			e.probeAt = now
+			return nil
+		}
+		return fmt.Errorf("debrid provider %q: daily quota reached, one test request is checking it: %w", displayName(e.cfg), ErrQuotaExceeded)
+	}
 	if now.Before(e.until) {
 		if e.state == "auth_failed" {
 			// Keep the cause classifiable: playback tells the viewer the
@@ -384,6 +406,7 @@ func (e *entry) observe(now time.Time, err error) *backoffEvent {
 		// server under maintenance) are not outages.
 		was := e.state
 		e.failures = 0
+		e.probeAt = time.Time{}
 		if !now.Before(e.until) {
 			// A call that was already in flight when a pause began does not
 			// end it (nor blank its reported state) early.
@@ -404,7 +427,19 @@ func (e *entry) observe(now time.Time, err error) *backoffEvent {
 	e.stats.Failures++
 	e.lastError = err.Error()
 	var rl *rateLimitError
+	wasQuota := e.state == stateQuota
+	e.probeAt = time.Time{}
 	switch {
+	case errors.Is(err, ErrQuotaExceeded):
+		if !now.Before(e.until) || !wasQuota {
+			// A new pause from the first quota answer or a failed test; a
+			// late answer of a call that began before the pause adds none.
+			e.state, e.until = stateQuota, now.Add(quotaPause)
+		}
+	case wasQuota && now.Before(e.until):
+		// A call in flight before the pause failed otherwise: the quota
+		// pause stays as it is.
+		return nil
 	case errors.Is(err, ErrAuth):
 		e.state, e.until = "auth_failed", now.Add(authBackoff)
 	case errors.As(err, &rl) || errors.Is(err, ErrRateLimited):
