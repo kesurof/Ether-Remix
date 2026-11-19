@@ -66,9 +66,7 @@ function ReleaseOverview({ compact = false }: { compact?: boolean }) {
       </p>
     );
   if (!d.enabled)
-    return (
-      <p>{L("La bibliothèque de releases est désactivée.", "Release library is disabled.")}</p>
-    );
+    return <p>{L("L’index des releases est indisponible.", "Release index is unavailable.")}</p>;
   return (
     <section className="min-w-0 max-w-full space-y-4">
       {Boolean(state.error) && (
@@ -79,13 +77,11 @@ function ReleaseOverview({ compact = false }: { compact?: boolean }) {
           )}
         </p>
       )}
-      <h2 className="text-lg font-semibold">
-        {L("Bibliothèque de releases · Bêta", "Release library · Beta")}
-      </h2>
+      <h2 className="text-lg font-semibold">{L("Index des releases", "Release index")}</h2>
       <p className="text-sm text-fg-muted">
         {L(
-          "Collecte continue lors des recherches et imports. Actualisation toutes les 60 secondes. Métadonnées et références se recoupent : leurs compteurs ne s’additionnent pas. Une référence disponible ne garantit pas la lecture.",
-          "Collected continuously during searches and imports. Refreshed every 60 seconds. Metadata and references overlap: their counts must not be added. An available reference does not guarantee playback.",
+          "Collecte continue lors des recherches et imports. Actualisation toutes les 60 secondes. Métadonnées et références se recoupent : leurs compteurs ne s’additionnent pas. Ces compteurs décrivent les références, pas leur conformité au profil de lecture.",
+          "Collected continuously during searches and imports. Refreshed every 60 seconds. Metadata and references overlap: their counts must not be added. These counters describe references, not compliance with the playback profile.",
         )}
       </p>
       {Boolean(d.quarantined) && (
@@ -103,7 +99,7 @@ function ReleaseOverview({ compact = false }: { compact?: boolean }) {
             [L("Contenus / épisodes", "Titles / episodes"), d.titles],
             [L("Métadonnées indexées", "Indexed metadata"), d.metadata],
             [L("Références conservées", "Stored references"), d.references],
-            [L("Références disponibles", "Available references"), d.ready],
+            [L("Références sans échec enregistré", "References without recorded failure"), d.ready],
             [L("À actualiser", "Needs refresh"), d.expired],
             [L("Échecs de lecture", "Playback failures"), d.failed],
             [L("Source modifiée", "Source changed"), d.sourceChanged],
