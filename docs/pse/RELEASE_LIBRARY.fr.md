@@ -2,7 +2,7 @@
 
 Activez **Remix → Indexation → Bibliothèque de releases (Bêta)** pour conserver les références exploitables des résultats de recherche. L’option `PSE_RELEASE_LIBRARY` est **désactivée par défaut**. Elle ne lance pas automatiquement l’indexation : celle-ci conserve ses sources, budgets et pauses habituels.
 
-Les recherches réelles alimentent la bibliothèque, ainsi que l’import SFR pour les titres du catalogue. Les liens fichiers Alkolites conservent le chemin AllDebrid vérifié, sans ajout de magnet. Les références et éventuels en-têtes privés sont chiffrés avec la clé de configuration de Remix et ne sont jamais envoyés au navigateur.
+Les recherches réelles alimentent la bibliothèque, ainsi que l’import SFR pour les titres du catalogue. Les liens fichiers Alkodiques conservent le chemin AllDebrid vérifié, sans ajout de magnet. Les références et éventuels en-têtes privés sont chiffrés avec la clé de configuration de Remix et ne sont jamais envoyés au navigateur.
 
 À la lecture, les références encore récentes sont proposées au moteur existant : langue, qualité, contraintes du lecteur et vérifications restent applicables. Le moteur peut réutiliser les alternatives conservées puis faire une recherche de secours si elles échouent ou ne conviennent pas. Le gain dépend du temps de résolution, de contrôle et de mise en tampon ; aucune lecture instantanée n’est garantie. Les recherches d’indexation et les recherches manuelles continuent à interroger les sources.
 
@@ -45,3 +45,10 @@ Les contenus déjà indexés sont ensuite repris progressivement pour récupére
 L’outil `go run ./cmd/ether-release-audit -db /chemin/copie.db -config /chemin/config-copie` fournit un audit en lecture seule. Utilisez une sauvegarde SQLite cohérente et une copie privée de `config.json` et `.credentials-key` (le chargement de configuration peut mettre à niveau cette copie). `-apply` met les entrées non confirmées en quarantaine : arrêter l’indexation/le serveur et conserver une sauvegarde préalable. Le rapport contient uniquement des compteurs par source et motif, jamais les URL de lecture ni les secrets.
 
 La recherche globale de releases parcourt les noms sans imposer le tri chronologique à chaque lecture ; le parcours par catégorie utilise l’ordre des dates pour limiter les lignes lues.
+
+
+## AllDebrid : références et quota d’ajout
+
+Les liens fichiers AllDebrid identifiés sont débridés sans ajout de magnet. Les torrents déjà présents dans le compte sont retrouvés par leur hash puis réutilisés. Une référence torrent absente du compte nécessite encore un ajout : conserver son hash dans la bibliothèque ne suffit pas à produire un lien fichier. Le refus `MAGNET_TOO_MANY` ne suspend que les ajouts répétés, pas la lecture des fichiers déjà accessibles.
+
+L’indexeur Remix conserve des références sans lancer lui-même de téléchargement ni débrider les fichiers. Une recherche auprès d’un addon distant reste toutefois exécutée par cet addon : celui-ci peut appeler AllDebrid pour vérifier son propre cache. Les budgets Remix ne contrôlent pas ces appels internes. L’import direct de la base StreamFusion et de ses liens Alkodiques évite cette recherche distante.
