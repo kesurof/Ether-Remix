@@ -2,6 +2,8 @@
 
 Option de **Sources → Stremio**. Elle met à jour le catalogue et la détection VF de Remix depuis votre propre base [StreamFusion Reborn](https://projetssd.github.io/ssdv2_docs/stream-fusion-reborn/installation/docker-compose-simple/#docker-compose-complet), en lecture seule. Elle ajoute aussi une source de recherche directe par film, saison et épisode dans le gestionnaire d’indexeurs de Remix. Les autres sources restent disponibles et les candidats passent par les vérifications habituelles de lecture. Aide : [Discord](https://discord.gg/B6GuEWxH4t).
 
+Guide pas à pas pour SSDV2 : [streamfusion-ssdv2.md](../streamfusion-ssdv2.md).
+
 ## Adapter le compose
 
 1. Créez un compte en lecture seule (adaptez le conteneur, la base et le mot de passe) :
