@@ -1,6 +1,6 @@
-# Release library — Beta
+# Release index
 
-Enable **Remix → Indexing → Release library (Beta)** to retain usable source references. `PSE_RELEASE_LIBRARY` is **off by default**. It does not automatically enable indexing, which keeps its existing source selection, budgets and playback pauses.
+Searches and imports automatically retain references in a shared index, reused during playback. Under **Remix → Indexing**, the single **Automatically search for releases** switch (`PSE_INDEXER`) controls background searches. It remains off by default; stopping it does not delete the index or disable browsing and reuse. The old `PSE_RELEASE_LIBRARY` setting is ignored regardless of its value. Existing sources, budgets and pauses are preserved.
 
 Actual searches and SFR imports for catalogue titles populate the library. Alkodiques file links preserve the verified AllDebrid file path without adding magnets. Private references and headers are encrypted with Remix's configuration key and never sent to the browser.
 
@@ -8,23 +8,23 @@ Playback offers recent references to the existing resolver, preserving language,
 
 ## Inspect releases
 
-Open a catalogue detail in the console and choose **Indexed releases · Beta**. Inspection remains available with reuse disabled. Use the sort selector and direction button to sort by resolution, size, video/audio codec, source, protocol, languages, reported cache, reference status or dates. Text filtering and display refresh do not query sources. Display ordering does not change playback preferences.
+Open a catalogue detail in the console and choose **Indexed releases**. Inspection remains available while automatic search is off. Use the sort selector and direction button to sort by resolution, size, video/audio codec, source, protocol, languages, reported cache, reference status or dates. Text filtering and display refresh do not query sources. Display ordering does not change playback preferences.
 
 For shows, select a season and episode. The initial view represents S01E01, used by catalogue indexing; other episodes are populated by their own searches. An indexed show does not prove availability of every episode.
 
-Publication comes from the source and is unknown when absent. First indexed and last observed are Remix dates. Metadata-only entries lack a retained usable reference. Available references and reported cache are not playback guarantees. Expired, failed and changed-source references are excluded from reuse.
+Publication comes from the source and is unknown when absent. First indexed and last observed are Remix dates. Metadata-only entries lack a retained usable reference. Retained references and reported cache are not playback guarantees. Expired, failed and changed-source references are excluded from reuse.
 
 **Browse the index**: under **Indexing → Releases**, search media (title or original title) or releases (name or source) across the whole index. Filter Movies, Series or Anime, then today, this week (from Monday), this month or an inclusive custom date range in your time zone. Choose first indexed or last observed dates. Series group episodes; clicking one expands its releases directly below the media without leaving the list or losing the search. Releases load on first opening and remain loaded when collapsed. Anime uses catalogue metadata when known. Results are paginated by 50 and sorted by indexing or observation. Global releases use Previous/Next without recounting the entire index; totals remain available for media and releases within a media item. Compact expandable rows reveal codecs, languages and dates without a horizontal table. Searching never contacts sources. On first opening of releases, existing encrypted references are prepared in batches, scoped to the selected media when applicable; only displayable fields are added to the search index.
 
 ## Retention
 
-Ordinary HTTP URLs can be reused for one hour; torrent/NZB download links for 24 hours. Stable references (valid hash/magnet and AllDebrid file link) do not expire by age. Failures or source configuration changes exclude them from reuse. Playback checks still apply: a stored hash does not prove debrid cache availability. Quality/language changes allow local reranking. Expired references are removed after 60 days without observation during collection; browsing does not extend validity.
+Ordinary HTTP URLs can be reused for one hour; torrent/NZB download links for 24 hours. Stable references (valid hash/magnet and AllDebrid file link) do not expire by age. Failures or source configuration changes exclude them from reuse. Playback checks still apply: a stored hash does not prove debrid cache availability. Quality/language changes remove rejected links; broadening criteria requires new searches. Expired references are removed after 60 days without observation during collection; browsing does not extend validity.
 
-Only results returned by sources can be retained; addon filtering cannot be undone. Old metadata cannot reconstruct missing links: another search or import is needed. Disabling beta stops reference collection and reuse without deleting existing metadata.
+Only results returned by sources can be retained; addon filtering cannot be undone. Old metadata cannot reconstruct missing links: another search or import is needed. Stopping automatic search preserves reference collection during playback searches and imports, as well as reuse of existing references.
 
 ## Console monitoring
 
-Enable the beta in **Overview → Quick start** or **Indexing**, then save. The **Indexing → Releases** view appears after saving. Search and browse media and releases by category and date range. Active and recent searches show real activity. Collection is continuous, without an overall completion percentage.
+The **Indexing → Releases** view is always available. Settings, source selection and search activity are under **Indexing**. Collection is continuous, without an overall completion percentage. A show only lists episodes actually present in the index; an initial S01E01 search does not imply a complete season.
 
 Counters also appear in **Overview**, separating metadata from stored references: available, expired, failed or source changed. These sets overlap and must not be added. Counters refresh every 60 seconds while the page is visible. An available reference does not guarantee playback.
 
@@ -41,3 +41,9 @@ Previously indexed titles then enter gradual source-reference recovery, respecti
 `go run ./cmd/ether-release-audit -db /path/copy.db -config /path/copied-config` performs a read-only audit. Use a consistent SQLite backup and private copies of `config.json` and `.credentials-key` (loading may upgrade the copied configuration). `-apply` quarantines unconfirmed rows: stop indexing/the server first and keep a backup. Reports contain source/reason counts only, never playback URLs or secrets.
 
 Global release search scans names without forcing chronological reads; category browsing uses date order to limit the rows read.
+
+## Selection before retention
+
+Links must meet active Remix criteria before storage and reuse: global or scoped profiles in profile mode; simple filters and French catalogue languages in simple mode. Explicit language exceptions remain active without bypassing quality requirements. Unknown language cannot satisfy a French/MULTi/VOSTFR requirement.
+
+Old links are cleaned up after profiles and exceptions are refreshed, on startup, after changes and during periodic maintenance. No video files are deleted. Observations without links remain diagnostic metadata; they do not prove compliance or playback availability. Broadening criteria requires fresh searches to recover rejected links. “Retained reference” does not replace client and playback profile checks.
