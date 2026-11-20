@@ -18,7 +18,7 @@ TEST = re.compile(r"(_test\.go|\.test\.tsx?)$")
 
 
 def git(*args):
-    return subprocess.run(["git", *args], check=True, capture_output=True, text=True).stdout
+    return subprocess.run(["git", "-c", "core.quotePath=false", *args], check=True, capture_output=True, text=True).stdout
 
 
 def remix(path):
@@ -32,7 +32,7 @@ def main():
     mb = git("merge-base", base, "HEAD").strip()
     changes = [l.split("\t") for l in git("diff", "--name-status", "--no-renames", mb, "HEAD").splitlines() if l]
     files = {p: s for s, p in changes}
-    fork_doc = git("show", f"HEAD:docs/pse/FORK.fr.md") if "docs/pse/FORK.fr.md" not in files or files["docs/pse/FORK.fr.md"] != "D" else ""
+    fork_doc = "" if files.get("docs/pse/FORK.fr.md") == "D" else git("show", "HEAD:docs/pse/FORK.fr.md")
     errors, warnings = [], []
     for path, status in sorted(files.items()):
         if status == "D" or remix(path):
@@ -53,7 +53,7 @@ def main():
         elif f"`{path}`" not in fork_doc:
             warnings.append(f"{path} : point d'accroche absent du tableau de docs/pse/FORK.fr.md")
     code = [p for p, s in files.items() if s != "D" and not p.startswith(("docs/", ".github/", "internal/admin/dist/")) and not p.endswith(".md")]
-    kind = title.split(":", 1)[0].split("(", 1)[0].strip().lower()
+    kind = title.split(":", 1)[0].split("(", 1)[0].strip().rstrip("!").lower()
     if code and "web/src/pse/RemixUpdates.tsx" not in files:
         msg = "pas de note dans web/src/pse/RemixUpdates.tsx (AGENTS.md)"
         (errors if kind in ("feat", "fix") else warnings).append(msg)
