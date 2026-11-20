@@ -30,8 +30,8 @@ export const REMIX_UPDATES = [
     version: "current",
     date: "2026-11-21",
     title: [
-      "Lecture plus claire : sources absentes, pauses d’indexeur et nouvelles saisons",
-      "Clearer playback: missing sources, indexer pauses and new seasons",
+      "Lecture plus claire, nouvelles saisons et bibliothèques Remix dans Jellyfin",
+      "Clearer playback, new seasons and Remix libraries in Jellyfin",
     ],
     items: [
       [
@@ -53,6 +53,10 @@ export const REMIX_UPDATES = [
       [
         "Nouveaux réglages dans Remix → Lecture → Continuer à regarder : séries examinées (200 par défaut, de 20 à 1000 ; 100 au plus sur Plex), période du dernier visionnage (illimitée), fenêtre des nouveaux épisodes (60 jours) et nombre maximal de films et de séries (0 = limite de l’application). Pris en compte sans redémarrage.",
         "New settings in Remix → Playback → Continue watching: shows examined (200 by default, 20 to 1000; at most 100 on Plex), last-watched period (unlimited), new episodes window (60 days) and maximum movies and shows (0 = the app’s limit). Applied without a restart.",
+      ],
+      [
+        "Jellyfin affiche les bibliothèques Remix et leurs collections selon les droits de chaque spectateur. Un profil limité aux bibliothèques Remix peut parcourir, rechercher et reprendre les titres autorisés. Le contrôle parental reste actif.",
+        "Jellyfin shows Remix libraries and their collections according to each viewer’s permissions. A viewer limited to Remix libraries can browse, search and resume permitted titles. Parental controls still apply.",
       ],
     ],
   },
