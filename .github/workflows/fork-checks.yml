@@ -6,6 +6,7 @@ name: Fork · contrôles
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
 
 permissions:
   contents: read
@@ -16,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # Les PR de synchronisation reprennent le code d'Aerya tel quel.
-    if: ${{ !startsWith(github.head_ref, 'sync/') && !contains(github.head_ref, 'synchro') }}
+    if: ${{ github.event.pull_request.head.repo.full_name != github.repository || !startsWith(github.head_ref, 'sync/') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -27,6 +28,8 @@ jobs:
           BASE: ${{ github.base_ref }}
           TITLE: ${{ github.event.pull_request.title }}
         run: python3 scripts/check_format_aerya.py "origin/$BASE" "$TITLE"
+      - name: Tests du contrôle de format
+        run: python3 -m unittest discover -s scripts -p test_check_format_aerya.py
 
   discord:
     name: Guides Discord
