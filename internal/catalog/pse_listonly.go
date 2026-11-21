@@ -32,3 +32,13 @@ func (c *Catalog) pseListGet(ctx context.Context, key core.RatingKey) (*core.Tit
 	}
 	return &st.t, nil
 }
+
+// pseListCredits limite, pour une liste légère, la distribution lue aux
+// réalisateurs (les filtres peuvent en dépendre) : une rangée n'affiche que
+// des affiches, et la fiche complète est relue à l'ouverture du titre.
+func pseListCredits(ctx context.Context) string {
+	if pseListOnly(ctx) {
+		return " AND c.kind='director'"
+	}
+	return ""
+}
