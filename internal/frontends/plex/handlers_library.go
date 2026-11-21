@@ -1293,11 +1293,11 @@ func (s *Server) handleSectionSubKey(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) sectionList(w http.ResponseWriter, r *http.Request, sec Section, sub string) {
-	r = frontend.PSEListRequest(r) // PSE-HOOK: listes légères, base seule — voir docs/pse/FORK.fr.md
 	if sub == "all" && r.URL.Query().Has("guid") {
 		s.libraryByGUID(w, r, &sec)
 		return
 	}
+	r = frontend.PSEListRequest(r) // PSE-HOOK: listes légères, base seule (pas la recherche par GUID) — voir docs/pse/FORK.fr.md
 	ctx := r.Context()
 	pr := FromContext(ctx)
 	// Plugin and filter libraries are served from the Experience's plugin
