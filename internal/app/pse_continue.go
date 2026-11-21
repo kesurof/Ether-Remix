@@ -45,6 +45,7 @@ func (a *App) startPSEContinue() {
 		// Charge la saison suivante des séries encore diffusées, en arrière-plan.
 		s.Refresh = func(ctx context.Context, keys []core.RatingKey) { _, _ = a.catalog.ContinueEpisodes(ctx, keys) }
 	}
+	s.Busy = func() bool { return a.playback != nil && len(a.playback.Sessions()) > 0 }
 	continuewatch.SetDefault(s)
 	ctx, cancel := context.WithCancel(context.Background())
 	a.closers = append(a.closers, func() { cancel(); continuewatch.SetDefault(nil) })

@@ -43,6 +43,13 @@ CREATE TABLE pse_continue_next_filled(
   filled_at INTEGER NOT NULL
 );
 `)
+	// Séries dont les épisodes ont été complétés depuis TMDB (rattrapage).
+	store.Register("pse_continue_next_completed", 1, `
+CREATE TABLE pse_continue_next_completed(
+  show_key INTEGER PRIMARY KEY,
+  completed_at INTEGER NOT NULL
+);
+`)
 	// Données dérivées de l'historique : recalculables, donc jamais fusionnées.
 	tables := []string{"pse_continue_next", "pse_continue_next_filled"}
 	store.RegisterViewerPurge("pse_continue_next", tables, func(ctx context.Context, tx *sql.Tx, id int64) error {
@@ -83,6 +90,8 @@ type Store struct {
 	// Refresh charge dans le catalogue la saison suivante des épisodes donnés
 	// (Catalog.ContinueEpisodes). Appelé seulement en arrière-plan.
 	Refresh func(context.Context, []core.RatingKey)
+	// Busy suspend le rattrapage pendant une lecture.
+	Busy func() bool
 }
 
 var current atomic.Pointer[Store]
@@ -100,6 +109,11 @@ const (
 	NewEpisodesEvery = 30 * time.Minute
 	// fillBatch : séries calculées par lot au remplissage initial.
 	fillBatch = 50
+	// CompleteEvery, completePerPass : rattrapage des épisodes manquants.
+	CompleteEvery   = 5 * time.Minute
+	completePerPass = 20
+	// completeAgain : une série sans suivant est revérifiée après ce délai.
+	completeAgain = 30 * 24 * time.Hour
 	// releaseOverlap : une fiche ajoutée au catalogue après sa date est quand même vue.
 	releaseOverlap = 24 * time.Hour
 )
@@ -505,9 +519,10 @@ func (s *Store) Run(ctx context.Context, onError func(string, error)) {
 	_, _, err := s.loadState(ctx)
 	report("filigrane", err)
 	report("remplissage", s.Fill(ctx))
-	inc, slow := time.NewTicker(IncrementalEvery), time.NewTicker(NewEpisodesEvery)
+	inc, slow, comp := time.NewTicker(IncrementalEvery), time.NewTicker(NewEpisodesEvery), time.NewTicker(CompleteEvery)
 	defer inc.Stop()
 	defer slow.Stop()
+	defer comp.Stop()
 	for {
 		select {
 		case <-ctx.Done():
@@ -515,6 +530,9 @@ func (s *Store) Run(ctx context.Context, onError func(string, error)) {
 		case <-inc.C:
 			_, err := s.Incremental(ctx)
 			report("passe incrémentale", err)
+		case <-comp.C:
+			_, err := s.Complete(ctx)
+			report("rattrapage des épisodes", err)
 		case <-slow.C:
 			_, err := s.NewEpisodes(ctx)
 			report("nouveaux épisodes", err)
@@ -589,4 +607,86 @@ GROUP BY p.show_key ORDER BY MIN(p.updated_at) LIMIT ?`, airingPerPass)
 		}
 	}
 	return total, nil
+}
+
+// Complete charge depuis TMDB les épisodes des séries de l'historique dont
+// aucun suivant n'est connu (catalogue incomplet : Ether n'enregistre les
+// épisodes qu'à l'ouverture d'une fiche), puis recalcule leurs lignes. Les
+// séries vues le plus récemment passent d'abord ; chacune est marquée et
+// revérifiée après completeAgain. Rien pendant une lecture ni un affichage.
+func (s *Store) Complete(ctx context.Context) (int, error) {
+	if s.Refresh == nil || (s.Busy != nil && s.Busy()) {
+		return 0, nil
+	}
+	now := s.now()
+	q, err := s.DB.QueryContext(ctx, `SELECT p.show_key, MAX(p.last_key) FROM pse_continue_next p
+LEFT JOIN pse_continue_next_completed c ON c.show_key=p.show_key
+WHERE p.next_key=0 AND (c.show_key IS NULL OR c.completed_at<?)
+GROUP BY p.show_key ORDER BY MAX(p.last_watched_at) DESC LIMIT ?`, now.Add(-completeAgain).Unix(), completePerPass)
+	if err != nil {
+		return 0, err
+	}
+	type target struct{ show, last int64 }
+	var targets []target
+	for q.Next() {
+		var t target
+		if err := q.Scan(&t.show, &t.last); err != nil {
+			q.Close()
+			return 0, err
+		}
+		targets = append(targets, t)
+	}
+	q.Close()
+	if err := q.Err(); err != nil {
+		return 0, err
+	}
+	total := 0
+	for _, t := range targets {
+		if ctx.Err() != nil || (s.Busy != nil && s.Busy()) {
+			break
+		}
+		s.Refresh(ctx, []core.RatingKey{core.RatingKey(t.last)})
+		n, err := s.recalcShow(ctx, t.show)
+		total += n
+		if err != nil {
+			return total, err
+		}
+		if _, err := s.DB.ExecContext(ctx, `INSERT INTO pse_continue_next_completed(show_key, completed_at) VALUES(?,?)
+ON CONFLICT(show_key) DO UPDATE SET completed_at=excluded.completed_at`, t.show, now.Unix()); err != nil {
+			return total, err
+		}
+		select {
+		case <-ctx.Done():
+			return total, ctx.Err()
+		case <-time.After(s.Pause):
+		}
+	}
+	return total, nil
+}
+
+// recalcShow recalcule les lignes sans suivant d'une série, pour tous les spectateurs.
+func (s *Store) recalcShow(ctx context.Context, show int64) (int, error) {
+	rs, err := s.DB.QueryContext(ctx, `SELECT user_id FROM pse_continue_next WHERE show_key=? AND next_key=0`, show)
+	if err != nil {
+		return 0, err
+	}
+	var batch []pending
+	for rs.Next() {
+		p := pending{show: core.RatingKey(show)}
+		if err := rs.Scan(&p.uid); err != nil {
+			rs.Close()
+			return 0, err
+		}
+		batch = append(batch, p)
+	}
+	rs.Close()
+	if err := rs.Err(); err != nil {
+		return 0, err
+	}
+	for i := range batch {
+		if batch[i].row, batch[i].ok, err = s.calc(ctx, batch[i].uid, batch[i].show); err != nil {
+			return 0, err
+		}
+	}
+	return len(batch), s.writeAll(ctx, batch)
 }

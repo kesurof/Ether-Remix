@@ -59,6 +59,10 @@ export const REMIX_UPDATES = [
         "Continue watching lists every show in progress, with no cap, and appears instantly: each show’s next episode is computed ahead of time (on every viewing, and when a new episode is released) instead of being searched on every display. Access rights, parental controls, hidden items and favorites are unchanged; “shows examined” is now only a fallback during the first fill.",
       ],
       [
+        "Les nouvelles saisons et les nouveaux épisodes, sortis après votre dernier visionnage dans la fenêtre des nouveaux épisodes, passent en tête de « Continuer à regarder », comme dans Nuvio ; le reste suit, de la dernière lecture la plus récente à la plus ancienne. Les épisodes des séries jamais ouvertes dans Ether sont complétés en arrière-plan (20 séries toutes les 5 minutes, en pause pendant une lecture) pour qu’aucune série en cours ne manque.",
+        "New seasons and new episodes, released after your last viewing within the new-episode window, come first in Continue Watching, as in Nuvio; the rest follows, from the most recently watched to the oldest. Episodes of shows never opened in Ether are filled in the background (20 shows every 5 minutes, paused during playback) so that no show in progress is missing.",
+      ],
+      [
         "Jellyfin affiche les bibliothèques Remix et leurs collections selon les droits de chaque spectateur. Un profil limité aux bibliothèques Remix peut parcourir, rechercher, reprendre et retrouver la suite (« À suivre ») des titres autorisés. Le contrôle parental reste actif.",
         "Jellyfin shows Remix libraries and their collections according to each viewer’s permissions. A viewer limited to Remix libraries can browse, search, resume and find the next episode (“Next Up”) of permitted titles. Parental controls still apply.",
       ],

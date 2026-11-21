@@ -311,3 +311,44 @@ func TestFillLeavesViewerWithoutHistoryUnfilled(t *testing.T) {
 		t.Fatal("rempli après le premier visionnage")
 	}
 }
+
+// Rattrapage : une série terminée dont le catalogue ne contient que l'épisode
+// vu est complétée une fois, puis n'est plus redemandée ; rien pendant une lecture.
+func TestCompleteLoadsMissingEpisodesOnce(t *testing.T) {
+	s := newStore(t)
+	ctx := context.Background()
+	addUser(t, s.DB, 1)
+	e1 := addEp(t, s.DB, 60, 1, 1, day(400))
+	s.DB.Exec(`INSERT INTO catalog_titles(key,type,status) VALUES(?,?,?)`, int64(core.ShowKey(60)), "show", "Ended")
+	watch(t, s.DB, 1, e1, day(200))
+	if err := s.Fill(ctx); err != nil {
+		t.Fatal(err)
+	}
+	busy, calls := true, 0
+	var e2 core.RatingKey
+	s.Busy = func() bool { return busy }
+	s.Refresh = func(_ context.Context, keys []core.RatingKey) {
+		calls++
+		if e2 == 0 {
+			e2 = addEp(t, s.DB, 60, 1, 2, day(399))
+		}
+	}
+	if _, err := s.Complete(ctx); err != nil || calls != 0 {
+		t.Fatalf("rattrapage pendant une lecture : %d appels, %v", calls, err)
+	}
+	busy = false
+	if _, err := s.Complete(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if r, _ := row(t, s, 1, 60); calls != 1 || r.NextKey != e2 {
+		t.Fatalf("épisode suivant attendu après rattrapage : %d appels, %+v", calls, r)
+	}
+	// Une série vue jusqu'au bout reste sans suivant : marquée, elle n'est pas redemandée.
+	watch(t, s.DB, 1, e2, day(1))
+	if _, err := s.Incremental(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Complete(ctx); err != nil || calls != 1 {
+		t.Fatalf("série déjà complétée redemandée : %d appels, %v", calls, err)
+	}
+}
