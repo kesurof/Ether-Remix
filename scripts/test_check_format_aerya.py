@@ -111,6 +111,39 @@ class FormatCheckTest(unittest.TestCase):
         for name in (UPDATES, "README.md", "README.en.md"):
             self.assertIn(name, result.stderr)
 
+    CURRENT = (UPDATE_LIST + '  {\n    id: "2026-11-21-current",\n    version: "current",\n'
+               '    items: [\n      ["a", "a"],\n    ],\n  },\n'
+               '  {\n    id: "2026-11-19-example",\n    version: "0.2.37-remix.114.1",\n  },\n];\n')
+
+    def fix_with_updates(self, updates):
+        self.write(UPDATES, self.CURRENT)
+        self.commit()
+        self.base = self.git("rev-parse", "HEAD").strip()
+        self.write("internal/pse/feature/feature.go", "package feature\n")
+        self.write(UPDATES, updates)
+        return self.check_format("fix: correction Remix")
+
+    def test_accepts_lines_added_to_current_note(self):
+        grown = self.CURRENT.replace('      ["a", "a"],\n', '      ["a", "a"],\n      ["b", "b"],\n')
+        result = self.fix_with_updates(grown)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_rejects_unchanged_current_note(self):
+        result = self.fix_with_updates(self.CURRENT + "\n")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn(UPDATES, result.stderr)
+
+    def test_rejects_grown_note_when_an_id_is_removed(self):
+        grown = self.CURRENT.replace('      ["a", "a"],\n', '      ["a", "a"],\n      ["b", "b"],\n')
+        grown = grown.replace('  {\n    id: "2026-11-19-example",\n    version: "0.2.37-remix.114.1",\n  },\n', "")
+        result = self.fix_with_updates(grown)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+
+    def test_rejects_lines_added_to_a_frozen_note(self):
+        frozen = self.CURRENT.replace('    version: "0.2.37-remix.114.1",\n', '    version: "0.2.37-remix.114.1",\n    items: [["b", "b"]],\n')
+        result = self.fix_with_updates(frozen)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+
     def test_accepts_feature_with_new_update_and_readmes(self):
         self.write("internal/pse/feature/feature.go", "package feature\n")
         updates = (self.repo / UPDATES).read_text(encoding="utf-8")

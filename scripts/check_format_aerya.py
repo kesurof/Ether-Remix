@@ -71,6 +71,26 @@ def note_ids(contents):
     return set(NOTE_ID.findall(entries.split("\n]", 1)[0]))
 
 
+def current_note(contents):
+    """Identifiant et texte de la note « current », ou (None, "")."""
+    _, _, entries = contents.partition("export const REMIX_UPDATES = [\n")
+    entries = entries.split("\n]", 1)[0]
+    starts = [m.start() for m in NOTE_ID.finditer(entries)] + [len(entries)]
+    for begin, end in zip(starts, starts[1:]):
+        block = entries[begin:end]
+        if 'version: "current"' in block:
+            return NOTE_ID.search(block).group(1), block
+    return None, ""
+
+
+def grows_current_note(before, after):
+    """Le fork ne publie pas de version : ses PR complètent la note « current »
+    encore non publiée au lieu d'en figer une à une version inexistante."""
+    note, old = current_note(before)
+    same, new = current_note(after)
+    return note is not None and note == same and len(new.splitlines()) > len(old.splitlines())
+
+
 def main():
     base = sys.argv[1] if len(sys.argv) > 1 else "origin/main"
     title = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -117,9 +137,12 @@ def main():
         if kind in ("feat", "fix"):
             added_note = False
             if note_status and note_status != "D":
-                previous_ids = set() if note_status == "A" else note_ids(git("show", f"{mb}:{UPDATES}"))
-                current_ids = note_ids(git("show", f"HEAD:{UPDATES}"))
-                added_note = previous_ids < current_ids
+                before = "" if note_status == "A" else git("show", f"{mb}:{UPDATES}")
+                after = git("show", f"HEAD:{UPDATES}")
+                previous_ids, current_ids = note_ids(before), note_ids(after)
+                added_note = previous_ids < current_ids or (
+                    previous_ids == current_ids and grows_current_note(before, after)
+                )
             if not added_note:
                 errors.append(f"pas de nouvelle note avec identifiant inédit dans {UPDATES} (AGENTS.md)")
         elif not note_status or note_status == "D":
