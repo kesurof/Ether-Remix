@@ -481,9 +481,13 @@ function PseSettings() {
           {tab !== "sources" &&
           tab !== "contenus" &&
           tab !== "indexation" &&
-          (tab !== "lecture" || view === "qualite") &&
+          (tab !== "lecture" || view === "qualite" || view === "continuer") &&
           (tab !== "visuels" || view === "affiches")
-            ? featuresOfTab(tab, current.features).map((f) => renderFeature(f))
+            ? featuresOfTab(tab, current.features)
+                .filter(
+                  (f) => tab !== "lecture" || (f.id === "continuewatch") === (view === "continuer"),
+                )
+                .map((f) => renderFeature(f))
             : null}
           {tab === "visuels" && view === "cartes" ? <DiscoveryCardsSetup /> : null}
           {tab === "visuels" && view === "affiches" ? (
