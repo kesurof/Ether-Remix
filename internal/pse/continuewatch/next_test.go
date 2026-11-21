@@ -324,6 +324,9 @@ func TestCompleteLoadsMissingEpisodesOnce(t *testing.T) {
 	if err := s.Fill(ctx); err != nil {
 		t.Fatal(err)
 	}
+	if _, _, err := s.loadState(ctx); err != nil { // filigrane posé, comme Run
+		t.Fatal(err)
+	}
 	busy, calls := true, 0
 	var e2 core.RatingKey
 	s.Busy = func() bool { return busy }
@@ -348,8 +351,16 @@ func TestCompleteLoadsMissingEpisodesOnce(t *testing.T) {
 	if _, err := s.Incremental(ctx); err != nil {
 		t.Fatal(err)
 	}
+	if r, _ := row(t, s, 1, 60); r.NextKey != 0 {
+		t.Fatalf("série vue jusqu'au bout : %+v", r)
+	}
 	if _, err := s.Complete(ctx); err != nil || calls != 1 {
 		t.Fatalf("série déjà complétée redemandée : %d appels, %v", calls, err)
+	}
+	// Revérifiée après 6 h, même terminée : un épisode peut sortir entre-temps.
+	s.Now = func() time.Time { return tNow.Add(7 * time.Hour) }
+	if _, err := s.Complete(ctx); err != nil || calls != 2 {
+		t.Fatalf("revérification après 6 h attendue : %d appels, %v", calls, err)
 	}
 }
 
