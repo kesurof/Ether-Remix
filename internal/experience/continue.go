@@ -55,6 +55,10 @@ func (c Continue) appendNext(ctx context.Context, viewer *core.User, titles []co
 	var err error
 	run := pseContinueFrom(ctx)                           // PSE-HOOK: réglages de Continuer à regarder — voir docs/pse/FORK.fr.md
 	historyLimit := run.historyLimit(c.ShowOnDeck != nil) // PSE-HOOK: réglages de Continuer à regarder — voir docs/pse/FORK.fr.md
+
+	if out, ok := c.pseAppendFromTable(ctx, viewer, run, titles, state); ok { // PSE-HOOK: séries lues depuis la table « à suivre » — voir docs/pse/FORK.fr.md
+		return out
+	}
 	if source, ok := c.State.(interface {
 		ContinueSeriesHistory(context.Context, int64, int) ([]core.HistoryEntry, error)
 	}); ok {

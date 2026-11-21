@@ -1,0 +1,205 @@
+package continuewatch
+
+import (
+	"context"
+	"database/sql"
+	"testing"
+	"time"
+
+	_ "github.com/braedonsaunders/ether/internal/catalog"
+	"github.com/braedonsaunders/ether/internal/core"
+	_ "github.com/braedonsaunders/ether/internal/state"
+	"github.com/braedonsaunders/ether/internal/store"
+)
+
+var tNow = time.Date(2026, 11, 21, 12, 0, 0, 0, time.UTC)
+
+func newStore(t *testing.T) *Store {
+	t.Helper()
+	db, err := store.OpenMemory(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Close() })
+	return &Store{DB: db, Now: func() time.Time { return tNow }}
+}
+
+func addEp(t *testing.T, db *sql.DB, show int64, season, ep int, released time.Time) core.RatingKey {
+	t.Helper()
+	k := core.EpisodeKey(show, season, ep)
+	ts := int64(0)
+	if !released.IsZero() {
+		ts = released.Unix()
+	}
+	if _, err := db.Exec(`INSERT INTO catalog_titles(key,type,show_key,season,episode,released_ts) VALUES(?,?,?,?,?,?)`,
+		int64(k), "episode", int64(core.ShowKey(show)), season, ep, ts); err != nil {
+		t.Fatal(err)
+	}
+	return k
+}
+
+func watch(t *testing.T, db *sql.DB, uid int64, k core.RatingKey, at time.Time) {
+	t.Helper()
+	if _, err := db.Exec(`INSERT INTO state_history(user_id,rating_key,viewed_at,completed) VALUES(?,?,?,1)`, uid, int64(k), at.UnixNano()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO state_watch(user_id,rating_key,view_count,last_viewed_at) VALUES(?,?,1,?) ON CONFLICT(user_id,rating_key) DO UPDATE SET view_count=1`, uid, int64(k), at.UnixNano()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func row(t *testing.T, s *Store, uid int64, show int64) (Row, bool) {
+	t.Helper()
+	var r Row
+	var last, lastAt, next, rel, rank int64
+	err := s.DB.QueryRow(`SELECT last_key,last_watched_at,next_key,next_released_ts,rank_ts FROM pse_continue_next WHERE user_id=? AND show_key=?`, uid, int64(core.ShowKey(show))).
+		Scan(&last, &lastAt, &next, &rel, &rank)
+	if err == sql.ErrNoRows {
+		return r, false
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.LastKey, r.NextKey = core.RatingKey(last), core.RatingKey(next)
+	r.RankAt = time.Unix(0, rank)
+	return r, true
+}
+
+func day(n int) time.Time { return tNow.Add(-time.Duration(n) * 24 * time.Hour) }
+
+func TestComputeNextEpisode(t *testing.T) {
+	s := newStore(t)
+	ctx := context.Background()
+	e11 := addEp(t, s.DB, 10, 1, 1, day(90))
+	e12 := addEp(t, s.DB, 10, 1, 2, day(80))
+	e13 := addEp(t, s.DB, 10, 1, 3, tNow.Add(48*time.Hour)) // pas encore sorti
+	addEp(t, s.DB, 10, 0, 1, day(100))                      // saison 0 ignorée
+	watch(t, s.DB, 1, e11, day(5))
+
+	if err := s.Compute(ctx, 1, core.ShowKey(10)); err != nil {
+		t.Fatal(err)
+	}
+	if r, ok := row(t, s, 1, 10); !ok || r.NextKey != e12 || r.LastKey != e11 {
+		t.Fatalf("après 1x1 : %+v %v", r, ok)
+	}
+	// 1x2 terminé : 1x3 n'est pas sorti, la série est à jour.
+	watch(t, s.DB, 1, e12, day(1))
+	_ = s.Compute(ctx, 1, core.ShowKey(10))
+	if r, _ := row(t, s, 1, 10); r.NextKey != 0 || r.LastKey != e12 {
+		t.Fatalf("à jour attendu : %+v", r)
+	}
+	// 1x3 sort, puis une nouvelle saison arrive : la série revient.
+	s.DB.Exec(`UPDATE catalog_titles SET released_ts=? WHERE key=?`, day(0).Unix(), int64(e13))
+	_ = s.Compute(ctx, 1, core.ShowKey(10))
+	if r, _ := row(t, s, 1, 10); r.NextKey != e13 {
+		t.Fatalf("1x3 attendu : %+v", r)
+	}
+	watch(t, s.DB, 1, e13, day(1))
+	e21 := addEp(t, s.DB, 10, 2, 1, tNow.Add(-time.Hour))
+	_ = s.Compute(ctx, 1, core.ShowKey(10))
+	r, _ := row(t, s, 1, 10)
+	if r.NextKey != e21 {
+		t.Fatalf("2x1 attendu : %+v", r)
+	}
+	if !r.RankAt.Equal(tNow.Add(-time.Hour).Truncate(time.Second)) {
+		t.Fatalf("rang = max(visionnage, sortie) : %v", r.RankAt)
+	}
+	// Un épisode vu n'est jamais proposé.
+	s.DB.Exec(`INSERT INTO state_watch(user_id,rating_key,view_count) VALUES(1,?,1)`, int64(e21))
+	_ = s.Compute(ctx, 1, core.ShowKey(10))
+	if r, _ := row(t, s, 1, 10); r.NextKey != 0 {
+		t.Fatalf("2x1 vu : %+v", r)
+	}
+}
+
+func TestIncrementalFromWatermark(t *testing.T) {
+	s := newStore(t)
+	ctx := context.Background()
+	a1 := addEp(t, s.DB, 20, 1, 1, day(30))
+	a2 := addEp(t, s.DB, 20, 1, 2, day(30))
+	b1 := addEp(t, s.DB, 21, 1, 1, day(30))
+	b2 := addEp(t, s.DB, 21, 1, 2, day(30))
+	watch(t, s.DB, 1, b1, day(9)) // avant le filigrane : couvert par le remplissage
+	if n, err := s.Incremental(ctx); err != nil || n != 0 {
+		t.Fatalf("premier passage : %d %v", n, err)
+	}
+	if _, ok := row(t, s, 1, 21); ok {
+		t.Fatal("l'historique d'avant le filigrane ne se calcule pas ici")
+	}
+	watch(t, s.DB, 1, a1, day(1))
+	watch(t, s.DB, 2, a1, day(1))
+	if n, err := s.Incremental(ctx); err != nil || n != 2 {
+		t.Fatalf("incrémental : %d %v", n, err)
+	}
+	if r, ok := row(t, s, 1, 20); !ok || r.NextKey != a2 {
+		t.Fatalf("%+v %v", r, ok)
+	}
+	if _, ok := row(t, s, 2, 20); !ok {
+		t.Fatal("second spectateur absent")
+	}
+	if n, _ := s.Incremental(ctx); n != 0 {
+		t.Fatalf("rien de neuf : %d", n)
+	}
+	// Le remplissage couvre l'ancien historique.
+	if err := s.Fill(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if r, ok := row(t, s, 1, 21); !ok || r.NextKey != b2 {
+		t.Fatalf("remplissage : %+v %v", r, ok)
+	}
+}
+
+func TestNewEpisodesRecomputesUpToDateShows(t *testing.T) {
+	s := newStore(t)
+	ctx := context.Background()
+	e1 := addEp(t, s.DB, 30, 1, 1, day(60))
+	watch(t, s.DB, 1, e1, day(2))
+	if _, err := s.Incremental(ctx); err != nil { // fixe le filigrane
+		t.Fatal(err)
+	}
+	if err := s.Fill(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if r, _ := row(t, s, 1, 30); r.NextKey != 0 {
+		t.Fatalf("à jour attendu : %+v", r)
+	}
+	e2 := addEp(t, s.DB, 30, 2, 1, tNow.Add(-time.Minute))
+	if n, err := s.NewEpisodes(ctx); err != nil || n != 1 {
+		t.Fatalf("nouveaux épisodes : %d %v", n, err)
+	}
+	if r, _ := row(t, s, 1, 30); r.NextKey != e2 {
+		t.Fatalf("nouvelle saison attendue : %+v", r)
+	}
+}
+
+func TestNextReadsAllShowsSortedAndFallsBackWhenEmpty(t *testing.T) {
+	s := newStore(t)
+	ctx := context.Background()
+	if rows, ok, err := s.Next(ctx, 1); err != nil || ok || rows != nil {
+		t.Fatalf("table vide : %v %v %v", rows, ok, err)
+	}
+	for i := int64(0); i < 250; i++ {
+		a := addEp(t, s.DB, 1000+i, 1, 1, day(400))
+		addEp(t, s.DB, 1000+i, 1, 2, day(400))
+		watch(t, s.DB, 1, a, tNow.Add(-time.Duration(i)*time.Hour))
+	}
+	if err := s.Fill(ctx); err != nil {
+		t.Fatal(err)
+	}
+	rows, ok, err := s.Next(ctx, 1)
+	if err != nil || !ok || len(rows) != 250 {
+		t.Fatalf("lecture : %d %v %v", len(rows), ok, err)
+	}
+	for i := 1; i < len(rows); i++ {
+		if rows[i].RankAt.After(rows[i-1].RankAt) {
+			t.Fatalf("pas triées à %d", i)
+		}
+	}
+	if rows[0].ShowKey != core.ShowKey(1000) {
+		t.Fatalf("la plus récente d'abord : %v", rows[0].ShowKey)
+	}
+	// Un autre spectateur, pas encore rempli, reste sur l'ancien calcul.
+	if _, ok, _ := s.Next(ctx, 2); ok {
+		t.Fatal("spectateur non rempli")
+	}
+}

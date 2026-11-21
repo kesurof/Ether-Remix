@@ -55,6 +55,10 @@ export const REMIX_UPDATES = [
         "New settings in Remix → Playback → Continue watching: shows examined (200 by default, 20 to 1000; at most 100 on Plex), last-watched period (unlimited), new episodes window (60 days) and maximum movies and shows (0 = the app’s limit). Applied without a restart.",
       ],
       [
+        "« Continuer à regarder » liste toutes les séries en cours, sans plafond, et s’affiche instantanément : l’épisode suivant de chaque série est calculé à l’avance (à chaque visionnage, et quand un nouvel épisode sort) au lieu d’être recherché à chaque affichage. Les droits, le contrôle parental, les masquages et les favoris ne changent pas ; « séries examinées » ne sert plus que de repli le temps du premier remplissage.",
+        "Continue watching lists every show in progress, with no cap, and appears instantly: each show’s next episode is computed ahead of time (on every viewing, and when a new episode is released) instead of being searched on every display. Access rights, parental controls, hidden items and favorites are unchanged; “shows examined” is now only a fallback during the first fill.",
+      ],
+      [
         "Jellyfin affiche les bibliothèques Remix et leurs collections selon les droits de chaque spectateur. Un profil limité aux bibliothèques Remix peut parcourir, rechercher, reprendre et retrouver la suite (« À suivre ») des titres autorisés. Le contrôle parental reste actif.",
         "Jellyfin shows Remix libraries and their collections according to each viewer’s permissions. A viewer limited to Remix libraries can browse, search, resume and find the next episode (“Next Up”) of permitted titles. Parental controls still apply.",
       ],
