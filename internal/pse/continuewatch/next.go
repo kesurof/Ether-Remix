@@ -427,7 +427,19 @@ func (s *Store) Fill(ctx context.Context) error {
 		return err
 	}
 	sort.Slice(users, func(i, j int) bool { return users[i] < users[j] })
+	lo := int64(core.EpisodeKey(0, 0, 0))
 	for _, uid := range users {
+		// Sans épisode terminé, le compte n'est pas marqué rempli : la rangée
+		// garde l'ancien calcul jusqu'à son premier visionnage.
+		var has int
+		err := s.DB.QueryRowContext(ctx, `SELECT 1 FROM state_history WHERE user_id=? AND completed=1 AND rating_key>=? AND rating_key<? LIMIT 1`,
+			uid, lo, lo+1_000_000_000_000_000).Scan(&has)
+		if err == sql.ErrNoRows {
+			continue
+		}
+		if err != nil {
+			return err
+		}
 		if err := s.fillViewer(ctx, uid); err != nil {
 			return fmt.Errorf("remplissage du spectateur %d : %w", uid, err)
 		}

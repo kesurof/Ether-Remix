@@ -204,9 +204,9 @@ func TestNextReadsAllShowsSortedAndFallsBackWhenEmpty(t *testing.T) {
 	if rows[0].ShowKey != core.ShowKey(1000) {
 		t.Fatalf("la plus récente d'abord : %v", rows[0].ShowKey)
 	}
-	// Un compte sans historique est rempli (vide) : il ne revient pas à l'ancien calcul.
-	if r2, ok, _ := s.Next(ctx, 2); !ok || len(r2) != 0 {
-		t.Fatalf("compte vide : %v %v", r2, ok)
+	// Un compte sans épisode terminé n'est pas prêt : l'ancien calcul s'applique.
+	if _, ok, _ := s.Next(ctx, 2); ok {
+		t.Fatal("compte sans historique marqué rempli")
 	}
 }
 
@@ -239,6 +239,7 @@ func TestRunSetsWatermarkBeforeFill(t *testing.T) {
 func TestFillSkipsHistoryWhenAllFilled(t *testing.T) {
 	s := newStore(t)
 	addUser(t, s.DB, 1)
+	watch(t, s.DB, 1, addEp(t, s.DB, 70, 1, 1, day(30)), day(1))
 	if err := s.Fill(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +250,7 @@ func TestFillSkipsHistoryWhenAllFilled(t *testing.T) {
 		t.Fatalf("Fill lit state_history : %v", err)
 	}
 	if _, ok, _ := s.Next(context.Background(), 1); !ok {
-		t.Fatal("compte vide marqué rempli attendu")
+		t.Fatal("compte rempli attendu")
 	}
 }
 
@@ -289,5 +290,24 @@ func TestComputeAcceptsUndatedEpisode(t *testing.T) {
 	_ = s.Compute(context.Background(), 1, core.ShowKey(60))
 	if r, _ := row(t, s, 1, 60); r.NextKey != e2 {
 		t.Fatalf("épisode sans date attendu : %+v", r)
+	}
+}
+
+func TestFillLeavesViewerWithoutHistoryUnfilled(t *testing.T) {
+	s := newStore(t)
+	ctx := context.Background()
+	addUser(t, s.DB, 1)
+	if err := s.Fill(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, _ := s.Next(ctx, 1); ok {
+		t.Fatal("sans historique : repli attendu")
+	}
+	watch(t, s.DB, 1, addEp(t, s.DB, 71, 1, 1, day(30)), day(1))
+	if err := s.Fill(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, _ := s.Next(ctx, 1); !ok {
+		t.Fatal("rempli après le premier visionnage")
 	}
 }
