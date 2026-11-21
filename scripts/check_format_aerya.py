@@ -33,6 +33,8 @@ TEST = re.compile(r"(_test\.go|\.test\.tsx?)$")
 REMIX_WORKFLOW = re.compile(r"^\.github/workflows/pse-[^/]+\.ya?ml$")
 FRONTEND_KIT_PACKAGE = re.compile(r"^(internal/frontend/kit/[^/]+)/")
 HOOK_TABLE_HEADER = re.compile(r"^\| *Fichier d'Ether *\| *Ajout *\| *$", re.MULTILINE)
+NOTE_ITEM = re.compile(r"^      \[", re.MULTILINE)
+NOTE_CURRENT = re.compile(r'^    version: "current",$', re.MULTILINE)
 NOTE_ID = re.compile(r'^  \{\n    id: "(\d{4}-\d{2}-\d{2}-[a-z0-9-]+)",$', re.MULTILINE)
 
 
@@ -76,11 +78,10 @@ def current_note(contents):
     _, _, entries = contents.partition("export const REMIX_UPDATES = [\n")
     entries = entries.split("\n]", 1)[0]
     starts = [m.start() for m in NOTE_ID.finditer(entries)] + [len(entries)]
-    for begin, end in zip(starts, starts[1:]):
-        block = entries[begin:end]
-        if 'version: "current"' in block:
-            return NOTE_ID.search(block).group(1), block
-    return None, ""
+    current = [entries[b:e] for b, e in zip(starts, starts[1:]) if NOTE_CURRENT.search(entries[b:e])]
+    if len(current) != 1:  # AGENTS.md : une seule note porte « current ».
+        return None, ""
+    return NOTE_ID.search(current[0]).group(1), current[0]
 
 
 def grows_current_note(before, after):
@@ -88,7 +89,7 @@ def grows_current_note(before, after):
     encore non publiée au lieu d'en figer une à une version inexistante."""
     note, old = current_note(before)
     same, new = current_note(after)
-    return note is not None and note == same and len(new.splitlines()) > len(old.splitlines())
+    return note is not None and note == same and len(NOTE_ITEM.findall(new)) > len(NOTE_ITEM.findall(old))
 
 
 def main():
@@ -144,7 +145,7 @@ def main():
                     previous_ids == current_ids and grows_current_note(before, after)
                 )
             if not added_note:
-                errors.append(f"pas de nouvelle note avec identifiant inédit dans {UPDATES} (AGENTS.md)")
+                errors.append(f"pas de nouvelle note avec identifiant inédit ni de nouvel item dans la note current de {UPDATES} (AGENTS.md)")
         elif not note_status or note_status == "D":
             warnings.append(f"pas de note dans {UPDATES} (AGENTS.md)")
     missing = {path for path in ("README.md", "README.en.md") if files.get(path) in (None, "D")}

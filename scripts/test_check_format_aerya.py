@@ -133,6 +133,18 @@ class FormatCheckTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn(UPDATES, result.stderr)
 
+    def test_rejects_blank_line_or_comment_in_current_note(self):
+        for filler in ("\n", "      // x\n"):
+            with self.subTest(filler=filler):
+                padded = self.CURRENT.replace('      ["a", "a"],\n', '      ["a", "a"],\n' + filler)
+                result = self.fix_with_updates(padded)
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+
+    def test_rejects_second_current_note(self):
+        doubled = self.CURRENT.replace('"0.2.37-remix.114.1"', '"current"').replace('      ["a", "a"],\n', '      ["a", "a"],\n      ["b", "b"],\n')
+        result = self.fix_with_updates(doubled)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+
     def test_rejects_grown_note_when_an_id_is_removed(self):
         grown = self.CURRENT.replace('      ["a", "a"],\n', '      ["a", "a"],\n      ["b", "b"],\n')
         grown = grown.replace('  {\n    id: "2026-11-19-example",\n    version: "0.2.37-remix.114.1",\n  },\n', "")
