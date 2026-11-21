@@ -662,7 +662,7 @@ func (s *Server) recommendSection(ctx context.Context, pr *Request, t frontend.M
 // cached/debrid link (no opening prefetch), and Prewarm's existing per-user
 // / rate budgets still apply.
 func (s *Server) warmBrowseLink(ctx context.Context, pr *Request, rows []model.Hub) {
-	if pr == nil || pr.User == nil {
+	if pr == nil || pr.User == nil || frontend.PSEListOnly(ctx) { // PSE-HOOK: listes légères, aucun préchauffage — voir docs/pse/FORK.fr.md
 		return
 	}
 	pw, ok := s.playback().(frontend.Prewarmer)
