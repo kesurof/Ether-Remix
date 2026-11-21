@@ -30,13 +30,21 @@ export const REMIX_UPDATES = [
     version: "current",
     date: "2026-11-21",
     title: [
-      "Lecture sans source : fin propre dans Plezy",
-      "Playback with no source: clean ending in Plezy",
+      "Lecture sans source et pause d’indexeur : des messages justes",
+      "Playback with no source and indexer pauses: accurate messages",
     ],
     items: [
       [
         "Quand aucune source n’est disponible, à cause d’une limite d’indexeur ou d’un quota debrid, les lecteurs comme Plezy affichent « fichier indisponible » et reviennent à la fiche, au lieu de rester bloqués.",
         'When no source is available, because of an indexer limit or a debrid quota, players such as Plezy show "file unavailable" and return to the title page instead of staying stuck.',
+      ],
+      [
+        "Quand un indexeur limite les requêtes d’Ether, la lecture le nomme et indique l’heure de reprise, au lieu d’annoncer que tous les indexeurs sont à leur limite. Le message précise si aucune autre source n’a de release.",
+        "When an indexer throttles Ether, playback names it and shows when it resumes, instead of saying all indexers are at their limit. The message says if no other source has a release.",
+      ],
+      [
+        "Sans Retry-After, la pause passe de 15 min à 30 min, 1 h, 2 h… jusqu’à 24 h, puis revient à 15 min au premier succès. La limite journalière réglée dans Ether garde son propre message.",
+        "Without Retry-After, the pause grows from 15 min to 30 min, 1 h, 2 h… up to 24 h, then returns to 15 min on the first success. The daily limit set in Ether keeps its own message.",
       ],
     ],
   },
