@@ -112,7 +112,7 @@ const (
 	// CompleteEvery, completePerPass : rattrapage des épisodes manquants.
 	CompleteEvery   = 5 * time.Minute
 	completePerPass = 20
-	// completeAgain : une série sans suivant est revérifiée après ce délai.
+	// completeAgain : une série terminée ou annulée sans suivant est revérifiée après ce délai.
 	completeAgain = 30 * 24 * time.Hour
 	// releaseOverlap : une fiche ajoutée au catalogue après sa date est quand même vue.
 	releaseOverlap = 24 * time.Hour
@@ -542,9 +542,10 @@ func (s *Store) Run(ctx context.Context, onError func(string, error)) {
 }
 
 // airingPerPass borne les séries dont la saison suivante est chargée à chaque passe.
-const airingPerPass = 50
+const airingPerPass = 100
 
-// refreshAiring charge la saison suivante des séries encore diffusées dont un
+// refreshAiring charge la saison suivante des séries ni terminées ni annulées
+// (en cours, en production, prévues) dont un
 // spectateur est à jour, puis recalcule leurs lignes. Jamais pendant un affichage.
 func (s *Store) refreshAiring(ctx context.Context) (int, error) {
 	if s.Refresh == nil {
@@ -552,7 +553,7 @@ func (s *Store) refreshAiring(ctx context.Context) (int, error) {
 	}
 	q, err := s.DB.QueryContext(ctx, `SELECT p.show_key, MAX(p.last_key) FROM pse_continue_next p
 JOIN catalog_titles sh ON sh.key=p.show_key AND sh.type='show'
-WHERE p.next_key=0 AND LOWER(sh.status)='returning series'
+WHERE p.next_key=0 AND LOWER(COALESCE(sh.status,'')) NOT IN ('ended','canceled')
 GROUP BY p.show_key ORDER BY MIN(p.updated_at) LIMIT ?`, airingPerPass)
 	if err != nil {
 		return 0, err
@@ -612,8 +613,9 @@ GROUP BY p.show_key ORDER BY MIN(p.updated_at) LIMIT ?`, airingPerPass)
 // Complete charge depuis TMDB les épisodes des séries de l'historique dont
 // aucun suivant n'est connu (catalogue incomplet : Ether n'enregistre les
 // épisodes qu'à l'ouverture d'une fiche), puis recalcule leurs lignes. Les
-// séries vues le plus récemment passent d'abord ; chacune est marquée et
-// revérifiée après completeAgain. Rien pendant une lecture ni un affichage.
+// séries vues le plus récemment passent d'abord ; chacune est marquée. Une
+// série terminée ou annulée est revérifiée après completeAgain ; les autres
+// le sont toutes les 30 minutes par refreshAiring. Rien pendant une lecture ni un affichage.
 func (s *Store) Complete(ctx context.Context) (int, error) {
 	if s.Refresh == nil || (s.Busy != nil && s.Busy()) {
 		return 0, nil
@@ -621,7 +623,8 @@ func (s *Store) Complete(ctx context.Context) (int, error) {
 	now := s.now()
 	q, err := s.DB.QueryContext(ctx, `SELECT p.show_key, MAX(p.last_key) FROM pse_continue_next p
 LEFT JOIN pse_continue_next_completed c ON c.show_key=p.show_key
-WHERE p.next_key=0 AND (c.show_key IS NULL OR c.completed_at<?)
+LEFT JOIN catalog_titles sh ON sh.key=p.show_key AND sh.type='show'
+WHERE p.next_key=0 AND (c.show_key IS NULL OR (c.completed_at<? AND LOWER(COALESCE(sh.status,'')) IN ('ended','canceled')))
 GROUP BY p.show_key ORDER BY MAX(p.last_watched_at) DESC LIMIT ?`, now.Add(-completeAgain).Unix(), completePerPass)
 	if err != nil {
 		return 0, err

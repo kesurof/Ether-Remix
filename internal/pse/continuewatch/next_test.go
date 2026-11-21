@@ -352,3 +352,22 @@ func TestCompleteLoadsMissingEpisodesOnce(t *testing.T) {
 		t.Fatalf("série déjà complétée redemandée : %d appels, %v", calls, err)
 	}
 }
+
+// Une série en production (statut vide ou autre que terminée/annulée) est
+// revérifiée à chaque passe des nouveaux épisodes, comme une série diffusée.
+func TestNewEpisodesRefreshesShowsInProduction(t *testing.T) {
+	s := newStore(t)
+	ctx := context.Background()
+	addUser(t, s.DB, 1)
+	e1 := addEp(t, s.DB, 70, 1, 1, day(60))
+	s.DB.Exec(`INSERT INTO catalog_titles(key,type,status) VALUES(?,?,?)`, int64(core.ShowKey(70)), "show", "In Production")
+	watch(t, s.DB, 1, e1, day(2))
+	if err := s.Fill(ctx); err != nil {
+		t.Fatal(err)
+	}
+	asked := 0
+	s.Refresh = func(context.Context, []core.RatingKey) { asked++ }
+	if _, err := s.NewEpisodes(ctx); err != nil || asked != 1 {
+		t.Fatalf("série en production non revérifiée : %d, %v", asked, err)
+	}
+}
