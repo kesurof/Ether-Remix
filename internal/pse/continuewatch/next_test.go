@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/braedonsaunders/ether/internal/auth"
 	_ "github.com/braedonsaunders/ether/internal/catalog"
 	"github.com/braedonsaunders/ether/internal/core"
 	_ "github.com/braedonsaunders/ether/internal/state"
@@ -115,6 +116,8 @@ func TestComputeNextEpisode(t *testing.T) {
 func TestIncrementalFromWatermark(t *testing.T) {
 	s := newStore(t)
 	ctx := context.Background()
+	addUser(t, s.DB, 1)
+	addUser(t, s.DB, 2)
 	a1 := addEp(t, s.DB, 20, 1, 1, day(30))
 	a2 := addEp(t, s.DB, 20, 1, 2, day(30))
 	b1 := addEp(t, s.DB, 21, 1, 1, day(30))
@@ -152,6 +155,7 @@ func TestIncrementalFromWatermark(t *testing.T) {
 func TestNewEpisodesRecomputesUpToDateShows(t *testing.T) {
 	s := newStore(t)
 	ctx := context.Background()
+	addUser(t, s.DB, 1)
 	e1 := addEp(t, s.DB, 30, 1, 1, day(60))
 	watch(t, s.DB, 1, e1, day(2))
 	if _, err := s.Incremental(ctx); err != nil { // fixe le filigrane
@@ -175,6 +179,8 @@ func TestNewEpisodesRecomputesUpToDateShows(t *testing.T) {
 func TestNextReadsAllShowsSortedAndFallsBackWhenEmpty(t *testing.T) {
 	s := newStore(t)
 	ctx := context.Background()
+	addUser(t, s.DB, 1)
+	addUser(t, s.DB, 2)
 	if rows, ok, err := s.Next(ctx, 1); err != nil || ok || rows != nil {
 		t.Fatalf("table vide : %v %v %v", rows, ok, err)
 	}
@@ -198,8 +204,90 @@ func TestNextReadsAllShowsSortedAndFallsBackWhenEmpty(t *testing.T) {
 	if rows[0].ShowKey != core.ShowKey(1000) {
 		t.Fatalf("la plus récente d'abord : %v", rows[0].ShowKey)
 	}
-	// Un autre spectateur, pas encore rempli, reste sur l'ancien calcul.
-	if _, ok, _ := s.Next(ctx, 2); ok {
-		t.Fatal("spectateur non rempli")
+	// Un compte sans historique est rempli (vide) : il ne revient pas à l'ancien calcul.
+	if r2, ok, _ := s.Next(ctx, 2); !ok || len(r2) != 0 {
+		t.Fatalf("compte vide : %v %v", r2, ok)
+	}
+}
+
+func addUser(t *testing.T, db *sql.DB, id int64) {
+	t.Helper()
+	if _, err := db.Exec(`INSERT INTO auth_users(id, plex_id, created_at, updated_at) VALUES(?,?,0,0)`, id, id+9000); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Un visionnage fait avant le remplissage mais après la pose du filigrane est rattrapé.
+func TestRunSetsWatermarkBeforeFill(t *testing.T) {
+	s := newStore(t)
+	addUser(t, s.DB, 1)
+	addEp(t, s.DB, 40, 1, 1, day(30))
+	b := addEp(t, s.DB, 40, 1, 2, day(30))
+	if _, _, err := s.loadState(context.Background()); err != nil { // ce que Run fait en premier
+		t.Fatal(err)
+	}
+	watch(t, s.DB, 1, core.EpisodeKey(40, 1, 1), day(1)) // pendant le remplissage
+	if n, err := s.Incremental(context.Background()); err != nil || n != 1 {
+		t.Fatalf("visionnage perdu : %d %v", n, err)
+	}
+	if r, _ := row(t, s, 1, 40); r.NextKey != b {
+		t.Fatalf("%+v", r)
+	}
+}
+
+// Une fois tous les comptes remplis, Fill ne touche plus state_history.
+func TestFillSkipsHistoryWhenAllFilled(t *testing.T) {
+	s := newStore(t)
+	addUser(t, s.DB, 1)
+	if err := s.Fill(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.DB.Exec(`DROP TABLE state_history`); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Fill(context.Background()); err != nil {
+		t.Fatalf("Fill lit state_history : %v", err)
+	}
+	if _, ok, _ := s.Next(context.Background(), 1); !ok {
+		t.Fatal("compte vide marqué rempli attendu")
+	}
+}
+
+// La saison suivante d'une série encore diffusée est chargée en arrière-plan.
+func TestNewEpisodesRefreshesAiringShows(t *testing.T) {
+	s := newStore(t)
+	ctx := context.Background()
+	addUser(t, s.DB, 1)
+	e1 := addEp(t, s.DB, 50, 1, 1, day(60))
+	s.DB.Exec(`INSERT INTO catalog_titles(key,type,status) VALUES(?,?,?)`, int64(core.ShowKey(50)), "show", "Returning Series")
+	watch(t, s.DB, 1, e1, day(2))
+	if err := s.Fill(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var asked []core.RatingKey
+	var e2 core.RatingKey
+	s.Refresh = func(_ context.Context, keys []core.RatingKey) {
+		asked = keys
+		e2 = addEp(t, s.DB, 50, 2, 1, day(100)) // sortie ancienne : seule l'hydratation la révèle
+	}
+	if _, err := s.NewEpisodes(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if len(asked) != 1 || asked[0] != e1 {
+		t.Fatalf("hydratation demandée : %v", asked)
+	}
+	if r, _ := row(t, s, 1, 50); r.NextKey != e2 {
+		t.Fatalf("nouvelle saison attendue : %+v", r)
+	}
+}
+
+func TestComputeAcceptsUndatedEpisode(t *testing.T) {
+	s := newStore(t)
+	e1 := addEp(t, s.DB, 60, 1, 1, day(60))
+	e2 := addEp(t, s.DB, 60, 1, 2, time.Time{})
+	watch(t, s.DB, 1, e1, day(1))
+	_ = s.Compute(context.Background(), 1, core.ShowKey(60))
+	if r, _ := row(t, s, 1, 60); r.NextKey != e2 {
+		t.Fatalf("épisode sans date attendu : %+v", r)
 	}
 }

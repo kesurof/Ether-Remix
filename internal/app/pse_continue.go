@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/braedonsaunders/ether/internal/core"
 	"github.com/braedonsaunders/ether/internal/experience"
 	"github.com/braedonsaunders/ether/internal/frontend"
 	"github.com/braedonsaunders/ether/internal/pse/continuewatch"
@@ -40,6 +41,10 @@ func (a *App) startPSEContinue() {
 		return
 	}
 	s := &continuewatch.Store{DB: a.db, Pause: 200 * time.Millisecond}
+	if a.catalog != nil {
+		// Charge la saison suivante des séries encore diffusées, en arrière-plan.
+		s.Refresh = func(ctx context.Context, keys []core.RatingKey) { _, _ = a.catalog.ContinueEpisodes(ctx, keys) }
+	}
 	continuewatch.SetDefault(s)
 	ctx, cancel := context.WithCancel(context.Background())
 	a.closers = append(a.closers, func() { cancel(); continuewatch.SetDefault(nil) })

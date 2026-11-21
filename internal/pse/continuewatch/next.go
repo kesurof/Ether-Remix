@@ -44,8 +44,25 @@ CREATE TABLE pse_continue_next_filled(
 );
 `)
 	// Données dérivées de l'historique : recalculables, donc jamais fusionnées.
-	store.RegisterViewerTable("pse_continue_next", "pse_continue_next", "user_id", store.ViewerMergeDrop)
-	store.RegisterViewerTable("pse_continue_next_filled", "pse_continue_next_filled", "user_id", store.ViewerMergeDrop)
+	tables := []string{"pse_continue_next", "pse_continue_next_filled"}
+	store.RegisterViewerPurge("pse_continue_next", tables, func(ctx context.Context, tx *sql.Tx, id int64) error {
+		for _, t := range tables {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM `+t+` WHERE user_id=?`, id); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	// La cible reçoit l'historique de la source : ses lignes sont à refaire,
+	// donc elle perd aussi sa marque « rempli » et sera remplie de nouveau.
+	store.RegisterViewerMerge("pse_continue_next", tables, func(ctx context.Context, tx *sql.Tx, from, into int64) error {
+		for _, t := range tables {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM `+t+` WHERE user_id IN (?,?)`, from, into); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // Row est la ligne « à suivre » d'une série pour un spectateur.
@@ -63,7 +80,9 @@ type Store struct {
 	DB    *sql.DB
 	Now   func() time.Time
 	Pause time.Duration // entre deux lots de remplissage
-
+	// Refresh charge dans le catalogue la saison suivante des épisodes donnés
+	// (Catalog.ContinueEpisodes). Appelé seulement en arrière-plan.
+	Refresh func(context.Context, []core.RatingKey)
 }
 
 var current atomic.Pointer[Store]
@@ -131,7 +150,7 @@ WHERE user_id=? AND completed=1 AND rating_key>=? AND rating_key<? ORDER BY view
 	args = append(args, s.now().Unix(), uid)
 	var next, released int64
 	err = s.DB.QueryRowContext(ctx, `SELECT key, released_ts FROM catalog_titles
-WHERE type='episode' AND show_key=? AND `+cond+` AND adult=0 AND release_known=1 AND released_ts<=?
+WHERE type='episode' AND show_key=? AND `+cond+` AND adult=0 AND released_ts<=?
 AND NOT EXISTS(SELECT 1 FROM state_watch w WHERE w.user_id=? AND w.rating_key=catalog_titles.key AND w.view_count>0 AND w.view_offset_ns<=0)
 ORDER BY season ASC, episode ASC LIMIT 1`, args...).Scan(&next, &released)
 	if err != nil && err != sql.ErrNoRows {
@@ -223,6 +242,21 @@ FROM pse_continue_next WHERE user_id=? AND next_key<>0 ORDER BY rank_ts DESC, sh
 	return rows, true, q.Err()
 }
 
+// Row lit la ligne d'une série, même « à jour » (NextKey 0).
+func (s *Store) Row(ctx context.Context, uid int64, show core.RatingKey) (Row, bool, error) {
+	var last, lastAt, next, rel, rank int64
+	err := s.DB.QueryRowContext(ctx, `SELECT last_key, last_watched_at, next_key, next_released_ts, rank_ts FROM pse_continue_next WHERE user_id=? AND show_key=?`,
+		uid, int64(show)).Scan(&last, &lastAt, &next, &rel, &rank)
+	if err == sql.ErrNoRows {
+		return Row{}, false, nil
+	}
+	if err != nil {
+		return Row{}, false, err
+	}
+	return Row{ShowKey: show, LastKey: core.RatingKey(last), LastWatchedAt: time.Unix(0, lastAt).UTC(), NextKey: core.RatingKey(next),
+		NextReleased: time.Unix(rel, 0).UTC(), RankAt: time.Unix(0, rank).UTC()}, true, nil
+}
+
 // historyRows lit les événements d'historique au-delà du filigrane.
 func (s *Store) historyRows(ctx context.Context, after int64, limit int) (maxID int64, pairs []pending, n int, err error) {
 	q, err := s.DB.QueryContext(ctx, `SELECT id, user_id, rating_key, completed FROM state_history WHERE id>? ORDER BY id LIMIT ?`, after, limit)
@@ -310,11 +344,15 @@ func (s *Store) NewEpisodes(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	now := s.now()
+	total, err := s.refreshAiring(ctx)
+	if err != nil {
+		return total, err
+	}
 	q, err := s.DB.QueryContext(ctx, `SELECT DISTINCT show_key FROM catalog_titles
 WHERE type='episode' AND release_known=1 AND season>0 AND adult=0 AND released_ts>? AND released_ts<=?`,
 		checked-int64(releaseOverlap/time.Second), now.Unix())
 	if err != nil {
-		return 0, err
+		return total, err
 	}
 	var shows []int64
 	for q.Next() {
@@ -329,7 +367,6 @@ WHERE type='episode' AND release_known=1 AND season>0 AND adult=0 AND released_t
 	if err := q.Err(); err != nil {
 		return 0, err
 	}
-	total := 0
 	for start := 0; start < len(shows); start += 200 {
 		part := shows[start:min(start+200, len(shows))]
 		args := make([]any, len(part))
@@ -370,12 +407,9 @@ WHERE type='episode' AND release_known=1 AND season>0 AND adult=0 AND released_t
 	return total, err
 }
 
-// Fill remplit la table des spectateurs qui ont un historique et pas encore de
-// marque « rempli », par lots de séries et avec une pause entre les lots.
+// Fill remplit la table des comptes qui n'ont pas encore la marque « rempli », par lots de séries et avec une pause entre les lots.
 func (s *Store) Fill(ctx context.Context) error {
-	q, err := s.DB.QueryContext(ctx, `SELECT DISTINCT user_id FROM state_history h WHERE completed=1 AND rating_key>=? AND rating_key<?
-AND NOT EXISTS(SELECT 1 FROM pse_continue_next_filled f WHERE f.user_id=h.user_id)`,
-		int64(core.EpisodeKey(0, 0, 0)), int64(core.EpisodeKey(0, 0, 0))+1_000_000_000_000_000)
+	q, err := s.DB.QueryContext(ctx, `SELECT id FROM auth_users u WHERE NOT EXISTS(SELECT 1 FROM pse_continue_next_filled f WHERE f.user_id=u.id)`)
 	if err != nil {
 		return err
 	}
@@ -454,6 +488,10 @@ func (s *Store) Run(ctx context.Context, onError func(string, error)) {
 			onError(what, err)
 		}
 	}
+	// Le filigrane est posé avant le remplissage : un visionnage fait pendant
+	// celui-ci sera rattrapé par la passe incrémentale.
+	_, _, err := s.loadState(ctx)
+	report("filigrane", err)
 	report("remplissage", s.Fill(ctx))
 	inc, slow := time.NewTicker(IncrementalEvery), time.NewTicker(NewEpisodesEvery)
 	defer inc.Stop()
@@ -471,4 +509,72 @@ func (s *Store) Run(ctx context.Context, onError func(string, error)) {
 			report("remplissage", s.Fill(ctx))
 		}
 	}
+}
+
+// airingPerPass borne les séries dont la saison suivante est chargée à chaque passe.
+const airingPerPass = 50
+
+// refreshAiring charge la saison suivante des séries encore diffusées dont un
+// spectateur est à jour, puis recalcule leurs lignes. Jamais pendant un affichage.
+func (s *Store) refreshAiring(ctx context.Context) (int, error) {
+	if s.Refresh == nil {
+		return 0, nil
+	}
+	q, err := s.DB.QueryContext(ctx, `SELECT p.show_key, MAX(p.last_key) FROM pse_continue_next p
+JOIN catalog_titles sh ON sh.key=p.show_key AND sh.type='show'
+WHERE p.next_key=0 AND LOWER(sh.status)='returning series'
+GROUP BY p.show_key ORDER BY MIN(p.updated_at) LIMIT ?`, airingPerPass)
+	if err != nil {
+		return 0, err
+	}
+	type target struct{ show, last int64 }
+	var targets []target
+	for q.Next() {
+		var t target
+		if err := q.Scan(&t.show, &t.last); err != nil {
+			q.Close()
+			return 0, err
+		}
+		targets = append(targets, t)
+	}
+	q.Close()
+	if err := q.Err(); err != nil {
+		return 0, err
+	}
+	total := 0
+	for _, t := range targets {
+		s.Refresh(ctx, []core.RatingKey{core.RatingKey(t.last)})
+		rs, err := s.DB.QueryContext(ctx, `SELECT user_id FROM pse_continue_next WHERE show_key=? AND next_key=0`, t.show)
+		if err != nil {
+			return total, err
+		}
+		var batch []pending
+		for rs.Next() {
+			p := pending{show: core.RatingKey(t.show)}
+			if err := rs.Scan(&p.uid); err != nil {
+				rs.Close()
+				return total, err
+			}
+			batch = append(batch, p)
+		}
+		rs.Close()
+		if err := rs.Err(); err != nil {
+			return total, err
+		}
+		for i := range batch {
+			if batch[i].row, batch[i].ok, err = s.calc(ctx, batch[i].uid, batch[i].show); err != nil {
+				return total, err
+			}
+		}
+		if err := s.writeAll(ctx, batch); err != nil {
+			return total, err
+		}
+		total += len(batch)
+		select {
+		case <-ctx.Done():
+			return total, ctx.Err()
+		case <-time.After(s.Pause):
+		}
+	}
+	return total, nil
 }

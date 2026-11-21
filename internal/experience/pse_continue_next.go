@@ -63,6 +63,7 @@ func (c Continue) pseAppendFromTable(ctx context.Context, viewer *core.User, run
 	for _, t := range c.GetTitles(ctx, nextKeys(keep, grouped)) {
 		byKey[t.Key] = t
 	}
+	recomputed := 0
 	for _, r := range keep {
 		if ctx.Err() != nil {
 			break
@@ -81,7 +82,10 @@ func (c Continue) pseAppendFromTable(ctx context.Context, viewer *core.User, run
 		}
 		st := statuses[ep.Key]
 		if st.ViewCount > 0 && st.ViewOffset <= 0 {
-			continue // vu depuis le dernier calcul
+			// Vu sans événement d'historique (import d'état) : on recalcule la série.
+			if ep, st = c.pseRecompute(ctx, viewer, r, statuses, &recomputed); ep == nil {
+				continue
+			}
 		}
 		st.Key = ep.Key
 		if st.LastViewedAt.Before(r.LastWatchedAt) {
@@ -141,4 +145,35 @@ func (c Continue) pseGroupedNext(ctx context.Context, viewer *core.User, r conti
 		}
 	}
 	return nil
+}
+
+// pseMaxRecompute borne les séries recalculées pendant un affichage.
+const pseMaxRecompute = 20
+
+// pseRecompute recalcule la ligne d'une série dont l'épisode suivant est déjà
+// vu, relit la ligne et renvoie le nouvel épisode suivant (nil s'il n'y en a pas).
+func (c Continue) pseRecompute(ctx context.Context, viewer *core.User, r continuewatch.Row, statuses map[core.RatingKey]core.WatchStatus, n *int) (*core.Title, core.WatchStatus) {
+	if *n >= pseMaxRecompute {
+		return nil, core.WatchStatus{}
+	}
+	*n++
+	s := continuewatch.Default()
+	if s == nil || s.Compute(ctx, viewer.ID, r.ShowKey) != nil {
+		return nil, core.WatchStatus{}
+	}
+	row, ok, err := s.Row(ctx, viewer.ID, r.ShowKey)
+	if err != nil || !ok || row.NextKey == 0 || row.NextKey == r.NextKey {
+		return nil, core.WatchStatus{}
+	}
+	titles := c.GetTitles(ctx, []core.RatingKey{row.NextKey})
+	got, err := c.State.GetMany(ctx, viewer.ID, []core.RatingKey{row.NextKey})
+	if len(titles) == 0 || err != nil {
+		return nil, core.WatchStatus{}
+	}
+	st := got[row.NextKey]
+	if st.ViewCount > 0 && st.ViewOffset <= 0 {
+		return nil, core.WatchStatus{}
+	}
+	statuses[row.NextKey] = st
+	return &titles[0], st
 }

@@ -115,3 +115,38 @@ func TestPSEContinueFallsBackWhenTableNotFilled(t *testing.T) {
 		t.Fatalf("l'ancien calcul doit répondre : %v", pseKeys(got))
 	}
 }
+
+// Un épisode suivant vu par import d'état (sans historique) : la série est recalculée.
+func TestPSEContinueTableRecomputesWhenNextAlreadyWatched(t *testing.T) {
+	s := pseTable(t)
+	if _, err := s.DB.Exec(`CREATE TABLE IF NOT EXISTS state_history(id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER,rating_key INTEGER,viewed_at INTEGER,completed INTEGER);
+CREATE TABLE IF NOT EXISTS state_watch(user_id INTEGER,rating_key INTEGER,view_offset_ns INTEGER DEFAULT 0,view_count INTEGER DEFAULT 0,PRIMARY KEY(user_id,rating_key));
+CREATE TABLE IF NOT EXISTS catalog_titles(key INTEGER PRIMARY KEY,type TEXT,show_key INTEGER,season INTEGER,episode INTEGER,released_ts INTEGER DEFAULT 0,adult INTEGER DEFAULT 0)`); err != nil {
+		t.Fatal(err)
+	}
+	p := pseShow{tmdb: 7, viewed: daysAgo(3), released: daysAgo(500)}
+	third := core.EpisodeKey(7, 2, 2)
+	s.DB.Exec(`INSERT INTO state_history(user_id,rating_key,viewed_at,completed) VALUES(1,?,?,1)`, int64(p.watched()), p.viewed.UnixNano())
+	s.DB.Exec(`INSERT INTO state_watch(user_id,rating_key,view_count) VALUES(1,?,1)`, int64(p.next()))
+	for _, k := range []core.RatingKey{p.next(), third} {
+		s.DB.Exec(`INSERT INTO catalog_titles(key,type,show_key,season,episode,released_ts) VALUES(?,?,?,?,?,?)`, int64(k), "episode", int64(core.ShowKey(7)), k.Season(), k.Episode(), daysAgo(400).Unix())
+	}
+	pseInsertRow(t, s, 1, p)
+	pseFill(t, s, 1)
+	c := pseTableContinue([]pseShow{p})
+	st := c.State.(*pseHistoryState)
+	st.values[p.next()] = core.WatchStatus{ViewCount: 1}
+	base := c.GetTitles
+	c.GetTitles = func(ctx context.Context, keys []core.RatingKey) []core.Title {
+		out := base(ctx, keys)
+		for _, k := range keys {
+			if k == third {
+				out = append(out, core.Title{Key: third, Type: core.TypeEpisode, Season: 2, Episode: 2, Released: daysAgo(400)})
+			}
+		}
+		return out
+	}
+	if got := pseKeys(first(c, 5)); len(got) != 1 || got[0] != third {
+		t.Fatalf("recalcul attendu vers 2x2 : %v", got)
+	}
+}
