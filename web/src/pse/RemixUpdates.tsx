@@ -36,7 +36,7 @@ export const REMIX_UPDATES = [
     items: [
       [
         "Quand aucune source n’est disponible, à cause d’une limite d’indexeur ou d’un quota debrid, les lecteurs comme Plezy affichent « fichier indisponible » et reviennent à la fiche, au lieu de rester bloqués.",
-        "When no source is available, because of an indexer limit or a debrid quota, players such as Plezy show \"file unavailable\" and return to the title page instead of staying stuck.",
+        'When no source is available, because of an indexer limit or a debrid quota, players such as Plezy show "file unavailable" and return to the title page instead of staying stuck.',
       ],
     ],
   },
