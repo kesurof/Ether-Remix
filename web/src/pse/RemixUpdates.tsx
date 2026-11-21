@@ -42,7 +42,7 @@ export const REMIX_UPDATES = [
   },
   {
     id: "2026-11-19-reference-selection",
-    version: "0.2.37-remix.113.1",
+    version: "0.2.37-remix.114.1",
     date: "2026-11-19",
     title: [
       "Conserver uniquement les liens conformes aux critères",
