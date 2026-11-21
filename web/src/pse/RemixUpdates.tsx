@@ -30,8 +30,8 @@ export const REMIX_UPDATES = [
     version: "current",
     date: "2026-11-21",
     title: [
-      "Lecture sans source et pause d’indexeur : des messages justes",
-      "Playback with no source and indexer pauses: accurate messages",
+      "Lecture plus claire et bibliothèques Remix dans Jellyfin",
+      "Clearer playback and Remix libraries in Jellyfin",
     ],
     items: [
       [
@@ -45,6 +45,10 @@ export const REMIX_UPDATES = [
       [
         "Sans Retry-After, la pause passe de 15 min à 30 min, 1 h, 2 h… jusqu’à 24 h, puis revient à 15 min au premier succès. La limite journalière réglée dans Ether garde son propre message.",
         "Without Retry-After, the pause grows from 15 min to 30 min, 1 h, 2 h… up to 24 h, then returns to 15 min on the first success. The daily limit set in Ether keeps its own message.",
+      ],
+      [
+        "Jellyfin affiche les bibliothèques Remix et leurs collections selon les droits de chaque spectateur. Un profil limité aux bibliothèques Remix peut parcourir, rechercher, reprendre et retrouver la suite (« À suivre ») des titres autorisés. Le contrôle parental reste actif.",
+        "Jellyfin shows Remix libraries and their collections according to each viewer’s permissions. A viewer limited to Remix libraries can browse, search, resume and find the next episode (“Next Up”) of permitted titles. Parental controls still apply.",
       ],
     ],
   },

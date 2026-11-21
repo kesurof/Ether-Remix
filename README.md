@@ -61,7 +61,7 @@ Le [détail des fonctionnalités](docs/pse/FEATURES.fr.md) précise les options,
 | Films, séries et animés | Préférences VF/MULTi, qualité, catalogue filtré, exceptions VOSTFR et sous-titres SubMaker. |
 | Sources vidéo | Debrid, Usenet, addons Stremio, Prowlarr/Jackett/NZBHydra2, base StreamFusion Reborn et SeerrCatalog. Clients torrent, XDCC et FTP/SFTP en option. |
 | Fichiers locaux | Vidéos et musique depuis vos dossiers ou montages réseau, sans déplacer ni supprimer les originaux. |
-| Bibliothèques et accueil | Collections, configuration rapide JukeBox, import Xperience, modèles de disposition, affiches et cartes personnalisées. Le partage respecte les droits de chaque spectateur. |
+| Bibliothèques et accueil | Collections, configuration rapide JukeBox, import Xperience, modèles de disposition, affiches et cartes personnalisées. Dans Jellyfin, les bibliothèques Remix suivent les droits de chaque spectateur. |
 | Musique | Catalogue Deezer, sources musicales activées, fichiers locaux et iBroadcast ; accès depuis Plexamp, Jellyfin ou Subsonic, avec playlists personnelles. |
 | Suivi | Progression et historique par spectateur, activité vidéo et musicale, Scrob, Last.fm et statistiques des sources. |
 
