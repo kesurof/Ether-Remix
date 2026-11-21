@@ -79,7 +79,7 @@ func (c *Catalog) Browse(ctx context.Context, q core.BrowseQuery) (core.Page, er
 		rkey = bkey + fmt.Sprintf("|rank:%d", rank.facts)
 	}
 	c.cacheMu.RLock()
-	if ent, ok := c.browseCache[bkey]; pageCacheable && !q.SortLastViewed && ok && ent.gen == gen && ent.minute == minBucket {
+	if ent, ok := c.browseCache[bkey]; pageCacheable && !q.SortLastViewed && ok && (ent.gen == gen && ent.minute == minBucket || pseListPageFresh(ctx, ent.minute, minBucket)) { // PSE-HOOK: liste légère, page récente acceptée — voir docs/pse/FORK.fr.md
 		items := make([]core.Title, len(ent.page.Items))
 		for i := range ent.page.Items {
 			items[i] = cloneTitle(ent.page.Items[i])
@@ -88,7 +88,7 @@ func (c *Catalog) Browse(ctx context.Context, q core.BrowseQuery) (core.Page, er
 		c.kickMovieYears(ctx, items) // PSE-HOOK: listes légères, ctx transmis — voir docs/pse/FORK.fr.md
 		return core.Page{Items: items, Total: ent.page.Total}, nil
 	}
-	if ent, ok := c.browseCache[rkey]; rank != nil && pageCacheable && !q.SortLastViewed && ok && ent.gen == gen && ent.minute == minBucket {
+	if ent, ok := c.browseCache[rkey]; rank != nil && pageCacheable && !q.SortLastViewed && ok && (ent.gen == gen && ent.minute == minBucket || pseListPageFresh(ctx, ent.minute, minBucket)) { // PSE-HOOK: liste légère, page récente acceptée — voir docs/pse/FORK.fr.md
 		items := make([]core.Title, len(ent.page.Items))
 		for i := range ent.page.Items {
 			items[i] = cloneTitle(ent.page.Items[i])
@@ -125,7 +125,8 @@ func (c *Catalog) Browse(ctx context.Context, q core.BrowseQuery) (core.Page, er
 	case q.NoTotal:
 		// The page query alone; the total is set from the page below.
 		total = offset + limit
-	case hasCnt && cntEnt.gen == gen && cntEnt.minute == minBucket:
+	case hasCnt && cntEnt.gen == gen && cntEnt.minute == minBucket,
+		hasCnt && pseListCountFresh(ctx, cntEnt.counted): // PSE-HOOK: liste légère, total récent accepté — voir docs/pse/FORK.fr.md
 		total = cntEnt.total
 	default:
 		if !cacheable {
