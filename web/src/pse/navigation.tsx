@@ -9,7 +9,12 @@ export const REMIX_TABS = [
     features: ["sfr", "seerrcatalog", "torrent", "torrent2", "torrent3", "xdcc", "ftp"],
   },
   { key: "indexation", fr: "Indexation", en: "Indexing", features: ["indexer"] },
-  { key: "lecture", fr: "Lecture", en: "Playback", features: ["french", "playable"] },
+  {
+    key: "lecture",
+    fr: "Lecture",
+    en: "Playback",
+    features: ["french", "playable", "continuewatch"],
+  },
   { key: "contenus", fr: "Contenus", en: "Content", features: ["music"] },
   { key: "visuels", fr: "Visuels", en: "Visuals", features: ["posters"] },
   { key: "suivi", fr: "Suivi", en: "Tracking", features: ["notify", "scrob"] },
@@ -31,6 +36,7 @@ export const REMIX_VIEWS = {
     { key: "priorites", fr: "Priorités", en: "Priorities" },
     { key: "qualite", fr: "Qualité", en: "Quality" },
     { key: "vostfr", fr: "VOSTFR", en: "Subtitles" },
+    { key: "continuer", fr: "Continuer à regarder", en: "Continue watching" },
   ],
   visuels: [
     { key: "cartes", fr: "Cartes", en: "Cards" },
