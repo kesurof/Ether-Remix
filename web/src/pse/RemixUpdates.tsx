@@ -26,8 +26,23 @@ export function compareUpdateVersions(a: string, b: string): number | null {
 // Ajouter les nouveautés ici à chaque livraison, de la plus récente à la plus ancienne.
 export const REMIX_UPDATES = [
   {
-    id: "2026-11-19-reference-selection",
+    id: "2026-11-21-playback-unavailable-status",
     version: "current",
+    date: "2026-11-21",
+    title: [
+      "Lecture sans source : fin propre dans Plezy",
+      "Playback with no source: clean ending in Plezy",
+    ],
+    items: [
+      [
+        "Quand aucune source n’est disponible, à cause d’une limite d’indexeur ou d’un quota debrid, les lecteurs comme Plezy affichent « fichier indisponible » et reviennent à la fiche, au lieu de rester bloqués.",
+        'When no source is available, because of an indexer limit or a debrid quota, players such as Plezy show "file unavailable" and return to the title page instead of staying stuck.',
+      ],
+    ],
+  },
+  {
+    id: "2026-11-19-reference-selection",
+    version: "0.2.37-remix.114.1",
     date: "2026-11-19",
     title: [
       "Conserver uniquement les liens conformes aux critères",
