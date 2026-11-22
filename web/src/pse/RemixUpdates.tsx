@@ -35,6 +35,10 @@ export const REMIX_UPDATES = [
     ],
     items: [
       [
+        "La musique ne remet plus à zéro ses sources de lecture toutes les heures : la synchronisation des médias personnels ne la recharge que si votre musique a changé.",
+        "Music no longer resets its playback sources every hour: syncing personal media only reloads it when your music has changed.",
+      ],
+      [
         "Les bibliothèques, rangées et collections n’affichent plus que ce qui est déjà en base : aucune fiche TMDB complétée, aucune écriture du catalogue et aucun préchauffage debrid pendant le défilement. Les détails ne partent qu’à l’ouverture d’une fiche ou à la lecture (réglage Listes légères, actif par défaut).",
         "Libraries, rows and collections now only show what is already stored: no TMDB detail fetched, no catalogue write and no debrid warm-up while browsing. Details load only when a title is opened or played (Light lists setting, on by default).",
       ],
