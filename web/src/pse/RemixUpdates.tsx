@@ -35,6 +35,10 @@ export const REMIX_UPDATES = [
     ],
     items: [
       [
+        "Sur Plex et Plezy, l’accueil et la vue Recommandé des bibliothèques s’affichent tout de suite : la dernière version construite est servie, puis mise à jour en arrière-plan, y compris juste après un visionnage. Un spectateur restreint ou un changement de droits attend toujours un écran à jour. Réglage « Écrans immédiats » (PSE_INSTANT_SCREENS), actif par défaut.",
+        "On Plex and Plezy, Home and the libraries’ Recommended view show at once: the last built version is served, then updated in the background, including right after a viewing. A restricted viewer or a change of rights always waits for an up-to-date screen. Setting “Instant screens” (PSE_INSTANT_SCREENS), on by default.",
+      ],
+      [
         "Les bibliothèques, rangées et collections n’affichent plus que ce qui est déjà en base : aucune fiche TMDB complétée, aucune écriture du catalogue et aucun préchauffage debrid pendant le défilement. Les détails ne partent qu’à l’ouverture d’une fiche ou à la lecture (réglage Listes légères, actif par défaut).",
         "Libraries, rows and collections now only show what is already stored: no TMDB detail fetched, no catalogue write and no debrid warm-up while browsing. Details load only when a title is opened or played (Light lists setting, on by default).",
       ],
