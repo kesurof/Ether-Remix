@@ -35,8 +35,8 @@ export const REMIX_UPDATES = [
     ],
     items: [
       [
-        "La musique ne remet plus à zéro ses sources de lecture toutes les heures : la synchronisation des médias personnels ne la recharge que si votre musique a changé.",
-        "Music no longer resets its playback sources every hour: syncing personal media only reloads it when your music has changed.",
+        "Sans musique personnelle, ou quand sa synchronisation échoue, la musique n’est plus rechargée au démarrage et toutes les heures : ses sources de lecture ne sont plus remises à zéro sans raison.",
+        "Without personal music, or when its sync fails, music is no longer reloaded at startup and every hour: its playback sources are no longer reset for no reason.",
       ],
       [
         "Les bibliothèques, rangées et collections n’affichent plus que ce qui est déjà en base : aucune fiche TMDB complétée, aucune écriture du catalogue et aucun préchauffage debrid pendant le défilement. Les détails ne partent qu’à l’ouverture d’une fiche ou à la lecture (réglage Listes légères, actif par défaut).",
