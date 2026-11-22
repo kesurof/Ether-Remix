@@ -38,3 +38,13 @@ func With(ctx context.Context) context.Context {
 func On(ctx context.Context) bool {
 	return ctx != nil && ctx.Value(ctxKey{}) != nil
 }
+
+// Without retire la marque : un travail partagé (construction d'une
+// collection, index) lancé depuis une liste doit lire les fiches complètes,
+// car son résultat est gardé et servi à tous.
+func Without(ctx context.Context) context.Context {
+	if !On(ctx) {
+		return ctx
+	}
+	return context.WithValue(ctx, ctxKey{}, nil)
+}
