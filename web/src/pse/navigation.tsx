@@ -13,7 +13,7 @@ export const REMIX_TABS = [
     key: "lecture",
     fr: "Lecture",
     en: "Playback",
-    features: ["french", "playable", "continuewatch"],
+    features: ["french", "playable", "continuewatch", "lightlists"],
   },
   { key: "contenus", fr: "Contenus", en: "Content", features: ["music"] },
   { key: "visuels", fr: "Visuels", en: "Visuals", features: ["posters"] },
