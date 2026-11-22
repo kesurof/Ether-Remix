@@ -45,7 +45,7 @@ jobs:
         run: |
           base=$(python3 -c 'import json; print(json.load(open("web/package.json"))["version"])')
           echo "version=$base-remix.kesurof.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
-          c=$(git rev-parse --short=8 HEAD)
+          c=$(git rev-parse HEAD | cut -c1-8)
           echo "commit=$c" >> "$GITHUB_OUTPUT"
           if [ -n "$REF" ]; then
             echo "tags=-t ghcr.io/kesurof/ether-remix:test-$c" >> "$GITHUB_OUTPUT"
