@@ -59,8 +59,20 @@ export const REMIX_UPDATES = [
         "New settings in Remix → Playback → Continue watching: shows examined (200 by default, 20 to 1000; at most 100 on Plex), last-watched period (unlimited), new episodes window (60 days) and maximum movies and shows (0 = the app’s limit). Applied without a restart.",
       ],
       [
+        "« Continuer à regarder » liste toutes les séries en cours, sans plafond, et s’affiche instantanément : l’épisode suivant de chaque série est calculé à l’avance (à chaque visionnage, et quand un nouvel épisode sort) au lieu d’être recherché à chaque affichage. Les droits, le contrôle parental, les masquages et les favoris ne changent pas ; « séries examinées » ne sert plus que de repli le temps du premier remplissage.",
+        "Continue watching lists every show in progress, with no cap, and appears instantly: each show’s next episode is computed ahead of time (on every viewing, and when a new episode is released) instead of being searched on every display. Access rights, parental controls, hidden items and favorites are unchanged; “shows examined” is now only a fallback during the first fill.",
+      ],
+      [
+        "Les nouvelles saisons et les nouveaux épisodes, sortis après votre dernier visionnage dans la fenêtre des nouveaux épisodes, passent en tête de « Continuer à regarder », comme dans Nuvio ; le reste suit, de la dernière lecture la plus récente à la plus ancienne. Les épisodes des séries jamais ouvertes dans Ether sont complétés en arrière-plan (20 séries toutes les 5 minutes, en pause pendant une lecture), puis revérifiés 4 fois par jour, et toutes les 30 minutes pour les séries encore diffusées, pour qu’aucune série en cours ne manque.",
+        "New seasons and new episodes, released after your last viewing within the new-episode window, come first in Continue Watching, as in Nuvio; the rest follows, from the most recently watched to the oldest. Episodes of shows never opened in Ether are filled in the background (20 shows every 5 minutes, paused during playback), then checked again 4 times a day, and every 30 minutes for shows still airing, so that no show in progress is missing.",
+      ],
+      [
         "Jellyfin affiche les bibliothèques Remix et leurs collections selon les droits de chaque spectateur. Un profil limité aux bibliothèques Remix peut parcourir, rechercher, reprendre et retrouver la suite (« À suivre ») des titres autorisés. Le contrôle parental reste actif.",
         "Jellyfin shows Remix libraries and their collections according to each viewer’s permissions. A viewer limited to Remix libraries can browse, search, resume and find the next episode (“Next Up”) of permitted titles. Parental controls still apply.",
+      ],
+      [
+        "Dans Jellyfin, une liste de tous les épisodes ne parcourt plus chaque série des bibliothèques Remix : le serveur ne se bloque plus. Les saisons et les épisodes s’ouvrent depuis la fiche de la série.",
+        "In Jellyfin, a list of every episode no longer walks each series of the Remix libraries, so the server no longer stalls. Seasons and episodes open from the series page.",
       ],
     ],
   },
