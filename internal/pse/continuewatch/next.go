@@ -575,6 +575,9 @@ GROUP BY p.show_key ORDER BY MIN(p.updated_at) LIMIT ?`, airingPerPass)
 	}
 	total := 0
 	for _, t := range targets {
+		if s.Busy != nil && s.Busy() {
+			break // reprise à la passe suivante, après la lecture
+		}
 		s.Refresh(ctx, []core.RatingKey{core.RatingKey(t.last)})
 		rs, err := s.DB.QueryContext(ctx, `SELECT user_id FROM pse_continue_next WHERE show_key=? AND next_key=0`, t.show)
 		if err != nil {
