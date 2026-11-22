@@ -2,6 +2,9 @@
 # Publie l'image de production à chaque fusion sur main :
 #   ghcr.io/kesurof/ether-remix:latest
 #   ghcr.io/kesurof/ether-remix:sha-<commit>
+# Lancé à la main sur une branche (test avant fusion, arm64) :
+#   gh workflow run fork-image.yml --repo kesurof/Ether-Remix -f ref=<branche>
+#   → ghcr.io/kesurof/ether-remix:test-<commit> seulement (jamais latest)
 # Étapes reprises de pse-docker.yml (désactivé sur le fork : il publie chez Aerya).
 name: Fork · Image de production
 
@@ -10,6 +13,11 @@ on:
     branches: [main]
     paths-ignore: ["**.md", "docs/**", "release-notes/**"]
   workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branche ou commit à construire pour un test (vide = main)"
+        type: string
+        required: false
 
 concurrency:
   group: fork-image
@@ -27,14 +35,25 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
 
       - name: Version
         id: v
+        env:
+          REF: ${{ inputs.ref }}
         run: |
           base=$(python3 -c 'import json; print(json.load(open("web/package.json"))["version"])')
           echo "version=$base-remix.kesurof.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
-          echo "commit=$(git rev-parse --short=8 HEAD)" >> "$GITHUB_OUTPUT"
+          c=$(git rev-parse --short=8 HEAD)
+          echo "commit=$c" >> "$GITHUB_OUTPUT"
+          if [ -n "$REF" ]; then
+            echo "tags=-t ghcr.io/kesurof/ether-remix:test-$c" >> "$GITHUB_OUTPUT"
+            echo "name=test-$c" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=-t ghcr.io/kesurof/ether-remix:latest -t ghcr.io/kesurof/ether-remix:sha-$c" >> "$GITHUB_OUTPUT"
+            echo "name=sha-$c" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: FFmpeg épinglé
         run: scripts/fetch-ffmpeg.sh linux-arm64
@@ -57,6 +76,6 @@ jobs:
             --label org.opencontainers.image.title="Ether-Remix (kesurof)" \
             --label org.opencontainers.image.version="${{ steps.v.outputs.version }}" \
             --cache-from type=gha --cache-to type=gha,mode=max \
-            -t "$img:latest" -t "$img:sha-${{ steps.v.outputs.commit }}" \
+            ${{ steps.v.outputs.tags }} \
             --push .
-          echo "Image : $img:sha-${{ steps.v.outputs.commit }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Image : $img:${{ steps.v.outputs.name }}" >> "$GITHUB_STEP_SUMMARY"
