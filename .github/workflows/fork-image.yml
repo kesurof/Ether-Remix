@@ -1,0 +1,81 @@
+# Propre au fork kesurof/Ether-Remix : jamais proposé à Aerya.
+# Publie l'image de production à chaque fusion sur main :
+#   ghcr.io/kesurof/ether-remix:latest
+#   ghcr.io/kesurof/ether-remix:sha-<commit>
+# Lancé à la main sur une branche (test avant fusion, arm64) :
+#   gh workflow run fork-image.yml --repo kesurof/Ether-Remix -f ref=<branche>
+#   → ghcr.io/kesurof/ether-remix:test-<commit> seulement (jamais latest)
+# Étapes reprises de pse-docker.yml (désactivé sur le fork : il publie chez Aerya).
+name: Fork · Image de production
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "docs/**", "release-notes/**"]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branche ou commit à construire pour un test (vide = main)"
+        type: string
+        required: false
+
+concurrency:
+  group: fork-image
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    if: github.repository == 'kesurof/Ether-Remix'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+
+      - name: Version
+        id: v
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          base=$(python3 -c 'import json; print(json.load(open("web/package.json"))["version"])')
+          echo "version=$base-remix.kesurof.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          c=$(git rev-parse HEAD | cut -c1-8)
+          echo "commit=$c" >> "$GITHUB_OUTPUT"
+          if [ -n "$REF" ]; then
+            echo "tags=-t ghcr.io/kesurof/ether-remix:test-$c" >> "$GITHUB_OUTPUT"
+            echo "name=test-$c" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=-t ghcr.io/kesurof/ether-remix:latest -t ghcr.io/kesurof/ether-remix:sha-$c" >> "$GITHUB_OUTPUT"
+            echo "name=sha-$c" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: FFmpeg épinglé
+        run: scripts/fetch-ffmpeg.sh linux-arm64
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Construire et publier
+        run: |
+          img=ghcr.io/kesurof/ether-remix
+          docker buildx build \
+            --platform linux/arm64 \
+            --build-arg VERSION="${{ steps.v.outputs.version }}" \
+            --build-arg COMMIT="${{ steps.v.outputs.commit }}" \
+            --label org.opencontainers.image.source="https://github.com/${{ github.repository }}" \
+            --label org.opencontainers.image.title="Ether-Remix (kesurof)" \
+            --label org.opencontainers.image.version="${{ steps.v.outputs.version }}" \
+            --cache-from type=gha --cache-to type=gha,mode=max \
+            ${{ steps.v.outputs.tags }} \
+            --push .
+          echo "Image : $img:${{ steps.v.outputs.name }}" >> "$GITHUB_STEP_SUMMARY"

@@ -20,6 +20,7 @@ REMIX_DIRS = (
 REMIX_FILES = {"README.md", "README.en.md", "README.fr.md"}
 FORK_FILES = {
     ".github/workflows/fork-checks.yml",
+    ".github/workflows/fork-image.yml",
     "docs/discord-streamfusion.md",
     "docs/streamfusion-ssdv2.md",
     "scripts/check_discord.py",

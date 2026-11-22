@@ -35,6 +35,10 @@ export const REMIX_UPDATES = [
     ],
     items: [
       [
+        "Sur Plex et Plezy, l’accueil et la vue Recommandé des bibliothèques s’affichent tout de suite : la dernière version construite est servie, puis mise à jour en arrière-plan, y compris juste après un visionnage. Un spectateur restreint ou un changement de droits attend toujours un écran à jour. Réglage « Écrans immédiats » (PSE_INSTANT_SCREENS), actif par défaut.",
+        "On Plex and Plezy, Home and the libraries’ Recommended view show at once: the last built version is served, then updated in the background, including right after a viewing. A restricted viewer or a change of rights always waits for an up-to-date screen. Setting “Instant screens” (PSE_INSTANT_SCREENS), on by default.",
+      ],
+      [
         "Sans musique personnelle, ou quand sa synchronisation échoue, la musique n’est plus rechargée au démarrage et toutes les heures : ses sources de lecture ne sont plus remises à zéro sans raison.",
         "Without personal music, or when its sync fails, music is no longer reloaded at startup and every hour: its playback sources are no longer reset for no reason.",
       ],
