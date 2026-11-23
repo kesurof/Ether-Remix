@@ -36,7 +36,9 @@
 <a id="nav-demarrage-rapide"></a>
 ## Quick start
 
-In the console, open **Ether-Remix → Overview → Quick start**. This view opens by default while indexing is disabled, remains available and does not change settings automatically.
+In the console, the **Remix** group in the left menu, above **Libraries**, holds the Ether-Remix pages. It opens in **Simple mode**: **Start**, **Sources**, **Languages and quality**, **Content**, **Statistics** and **Diagnostics**. On a first visit with no source at all, a four-step **assistant** (Sources, Language, App, Done) starts once; **Start** lets you run it again. **Diagnostics** checks sources, indexing, titles ready to play and storage, and offers one action per problem. In Simple mode, **Sources** is limited to Stremio, Debrid, Usenet, Music streaming, Local files and IPTV, arranged by use. The group’s **Expert** switch adds the **Indexing**, **Playback**, **Visuals** and **Tracking** pages, plus the Indexers, BitTorrent, XDCC and FTP / SFTP categories; the choice is remembered in your browser only.
+
+The detailed step-by-step guide is in **Start**, collapsible; it does not change settings automatically. **Statistics**, visible from Simple mode, has five views: **Summary** (where preparation stands), **Catalogue**, **Searches**, **Sources** and **Usage**. The **Indexing → Pre (beta)** section has its own view. Each option has a single place: SubMaker under **Playback → Subtitles**, library sorting under **Content**, search activity under **Statistics → Searches**.
 
 1. **Sources**: add, test and enable your providers. An addon supplying its own playback links does not require a second debrid key for searches.
 2. **Indexing**: enable and save background indexing to prepare the video catalogue. Automatic mode uses enabled Stremio addons; switch to Custom to choose sources, including Prowlarr/Jackett indexers. An empty custom selection performs no searches. Respect provider quotas.
@@ -294,8 +296,9 @@ Indexers (Prowlarr, Jackett, NZBHydra2) find releases. Configure the appropriate
 
 - **Sources**: one entry for accounts, Stremio addons, BitTorrent/Usenet indexers, Usenet providers, IPTV and music sources. Ether components and configurations are retained. Indexers can be filtered by Prowlarr/Jackett instance or manual origin, with one shared configuration.
 - **Indexing → Settings**: enablement, budgets, pace and source selection: Automatic for enabled Stremio addons, or Custom, including no sources. This does not disable playback sources. Priority titles show catalogue, searched, with-release and shown counts for each library or collection; groups can overlap.
+- **Start, Diagnostics and assistant** (Simple mode): first steps, installation check and guided setup.
 - **Overview**: quick start, Remix indexing activity plus Ether’s Sources and Usage dashboards.
-- **Playback → Priorities**: preferences among equivalent-quality sources. This does not enforce sequential network searches or universally rank local files, torrent clients, XDCC and FTP. Last-resort behavior is configured per Stremio addon in Sources.
+- **Playback → Priorities**: optional quick setup with a strict, freely reorderable source order ([guide](QUICK_SOURCES.en.md)). When disabled, advanced preferences still rank equivalent-quality sources and do not make searches sequential.
 - **Playback → Quality**: French catalogue, release languages, resolution, codecs, cache and collection exceptions.
 - **Playback → Subtitles**: explicit non-dubbed title selection and priority searches.
 - **Content**: movies, shows, anime, music, playlists and custom libraries. Mixed libraries remain available under Movies and Shows.
@@ -399,7 +402,7 @@ In **Sources → Music streaming → iBroadcast**, or your **personal portal** a
 3. Click **Connect iBroadcast**, open the link and authorize **read-only** account and library access. The panel updates automatically.
 4. Import starts after authorization, then runs hourly; **Refresh library** starts it manually.
 
-Each iBroadcast account is **private by default**, belongs to the viewer who connects it and has separate encrypted credentials. You can add multiple accounts and optionally share each with selected viewers or everyone. Authorized libraries appear together in Music; favourites and listening history remain personal. Enable **Import my iBroadcast playlists** to bring them into your clients, preserving track order and repeated songs while skipping deleted or unavailable tracks. Playlists refresh with the library and remain personal to the account owner. Tracks stream as **MP3 128 kbps**, including free accounts. Playlist and tag edits are not written back to iBroadcast. Tokens are encrypted in the database, refreshed automatically and excluded from client responses. Disconnecting removes the library from Remix; revoke the provider authorization separately in iBroadcast **Apps**.
+Each iBroadcast account is **private by default**, belongs to the viewer who connects it and has separate encrypted credentials. You can add multiple accounts and optionally share each with selected viewers or everyone. Authorized libraries appear together in Music; favourites and listening history remain personal. Enable **Import my iBroadcast playlists** to bring them into your clients, preserving track order and repeated songs while skipping deleted or unavailable tracks. Playlists refresh with the library and remain personal to the account owner. Playback automatically prefers the original file (Premium); if iBroadcast refuses it, Remix retries as MP3 128 kbps for free accounts. No setting is required. Refresh the library once after updating to refresh the formats advertised to players. Playlist and tag edits are not written back to iBroadcast. Tokens are encrypted in the database, refreshed automatically and excluded from client responses. Disconnecting removes the library from Remix; revoke the provider authorization separately in iBroadcast **Apps**.
 
 <a id="nav-search-caching-and-source-outages"></a>
 

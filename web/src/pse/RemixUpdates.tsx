@@ -26,12 +26,12 @@ export function compareUpdateVersions(a: string, b: string): number | null {
 // Ajouter les nouveautés ici à chaque livraison, de la plus récente à la plus ancienne.
 export const REMIX_UPDATES = [
   {
-    id: "2026-11-21-playback-unavailable-status",
+    id: "2026-11-23-instant-screens-continue",
     version: "current",
-    date: "2026-11-21",
+    date: "2026-11-23",
     title: [
-      "Lecture plus claire, nouvelles saisons et bibliothèques Remix dans Jellyfin",
-      "Clearer playback, new seasons and Remix libraries in Jellyfin",
+      "Écrans Plex immédiats, listes légères et « Continuer à regarder » complet",
+      "Instant Plex screens, light lists and a complete Continue Watching",
     ],
     items: [
       [
@@ -39,13 +39,71 @@ export const REMIX_UPDATES = [
         "On Plex and Plezy, Home and the libraries’ Recommended view show at once: the last built version is served, then updated in the background, including right after a viewing. A restricted viewer or a change of rights always waits for an up-to-date screen. Setting “Instant screens” (PSE_INSTANT_SCREENS), on by default.",
       ],
       [
-        "Sans musique personnelle, ou quand sa synchronisation échoue, la musique n’est plus rechargée au démarrage et toutes les heures : ses sources de lecture ne sont plus remises à zéro sans raison.",
-        "Without personal music, or when its sync fails, music is no longer reloaded at startup and every hour: its playback sources are no longer reset for no reason.",
-      ],
-      [
         "Les bibliothèques, rangées et collections n’affichent plus que ce qui est déjà en base : aucune fiche TMDB complétée, aucune écriture du catalogue et aucun préchauffage debrid pendant le défilement. Les détails ne partent qu’à l’ouverture d’une fiche ou à la lecture (réglage Listes légères, actif par défaut).",
         "Libraries, rows and collections now only show what is already stored: no TMDB detail fetched, no catalogue write and no debrid warm-up while browsing. Details load only when a title is opened or played (Light lists setting, on by default).",
       ],
+      [
+        "« Continuer à regarder » liste toutes les séries en cours, sans plafond, et s’affiche instantanément : l’épisode suivant de chaque série est calculé à l’avance (à chaque visionnage, et quand un nouvel épisode sort) au lieu d’être recherché à chaque affichage. Les droits, le contrôle parental, les masquages et les favoris ne changent pas ; « séries examinées » ne sert plus que de repli le temps du premier remplissage.",
+        "Continue watching lists every show in progress, with no cap, and appears instantly: each show’s next episode is computed ahead of time (on every viewing, and when a new episode is released) instead of being searched on every display. Access rights, parental controls, hidden items and favorites are unchanged; “shows examined” is now only a fallback during the first fill.",
+      ],
+      [
+        "Les nouvelles saisons et les nouveaux épisodes, sortis après votre dernier visionnage dans la fenêtre des nouveaux épisodes, passent en tête de « Continuer à regarder », comme dans Nuvio ; le reste suit, de la dernière lecture la plus récente à la plus ancienne. Les épisodes des séries jamais ouvertes dans Ether sont complétés en arrière-plan (20 séries toutes les 5 minutes, en pause pendant une lecture), puis revérifiés 4 fois par jour, et toutes les 30 minutes pour les séries encore diffusées, pour qu’aucune série en cours ne manque.",
+        "New seasons and new episodes, released after your last viewing within the new-episode window, come first in Continue Watching, as in Nuvio; the rest follows, from the most recently watched to the oldest. Episodes of shows never opened in Ether are filled in the background (20 shows every 5 minutes, paused during playback), then checked again 4 times a day, and every 30 minutes for shows still airing, so that no show in progress is missing.",
+      ],
+      [
+        "Dans Jellyfin, une liste de tous les épisodes ne parcourt plus chaque série des bibliothèques Remix : le serveur ne se bloque plus. Les saisons et les épisodes s’ouvrent depuis la fiche de la série.",
+        "In Jellyfin, a list of every episode no longer walks each series of the Remix libraries, so the server no longer stalls. Seasons and episodes open from the series page.",
+      ],
+      [
+        "Sans musique personnelle, ou quand sa synchronisation échoue, la musique n’est plus rechargée au démarrage et toutes les heures : ses sources de lecture ne sont plus remises à zéro sans raison.",
+        "Without personal music, or when its sync fails, music is no longer reloaded at startup and every hour: its playback sources are no longer reset for no reason.",
+      ],
+    ],
+  },
+  {
+    id: "2026-11-22-ibroadcast-original",
+    version: "0.2.37-remix.127.1",
+    date: "2026-11-22",
+    title: ["iBroadcast en qualité originale", "Original-quality iBroadcast"],
+    items: [
+      [
+        "La lecture privilégie le fichier original pour les comptes Premium et se replie automatiquement en MP3 128 kb/s si iBroadcast le refuse. Actualisez la bibliothèque pour retrouver les formats d’origine dans vos lecteurs.",
+        "Playback prefers the original file for Premium accounts and automatically falls back to MP3 128 kbps if iBroadcast refuses it. Refresh your library to see original formats in your players.",
+      ],
+    ],
+  },
+  {
+    id: "2026-11-21-remix-libraries-per-viewer",
+    version: "0.2.37-remix.126.1",
+    date: "2026-11-21",
+    title: [
+      "Bibliothèques Remix au choix pour chaque spectateur, aussi dans Jellyfin",
+      "Remix libraries chosen per viewer, in Jellyfin too",
+    ],
+    items: [
+      [
+        "Dans la fiche d’un spectateur, cochez ses bibliothèques Remix. Un choix explicite peut lui ouvrir ces seules bibliothèques, sans les sections Films et Séries : pratique pour un profil enfant limité à « Dessins animés ». Sans choix, rien ne change.",
+        "In a viewer’s page, tick their Remix libraries. An explicit choice can open only those libraries, without the Movies and Shows sections: handy for a kids profile limited to “Cartoons”. Without a choice, nothing changes.",
+      ],
+      [
+        "Un titre d’une bibliothèque Remix accordée se lit aussi depuis Stremio et depuis les hubs Plex, même s’il n’est pas dans les sections de base du spectateur. Le contrôle parental reste actif.",
+        "A title from a granted Remix library also plays from Stremio and from Plex hubs, even when it is outside the viewer’s base sections. Parental controls still apply.",
+      ],
+      [
+        "Jellyfin affiche les bibliothèques Remix et leurs collections selon les droits de chaque spectateur. Un profil limité aux bibliothèques Remix peut parcourir, rechercher, reprendre et retrouver la suite (« À suivre ») des titres autorisés.",
+        "Jellyfin shows Remix libraries and their collections according to each viewer’s permissions. A viewer limited to Remix libraries can browse, search, resume and find the next episode (“Next Up”) of permitted titles.",
+      ],
+    ],
+  },
+  {
+    id: "2026-11-21-playback-clear-new-seasons",
+    version: "0.2.37-remix.125.1",
+    date: "2026-11-21",
+    title: [
+      "Lecture plus claire et nouvelles saisons dans Continuer à regarder",
+      "Clearer playback and new seasons in Continue watching",
+    ],
+    items: [
       [
         "Quand aucune source n’est disponible, à cause d’une limite d’indexeur ou d’un quota debrid, les lecteurs comme Plezy affichent « fichier indisponible » et reviennent à la fiche, au lieu de rester bloqués.",
         'When no source is available, because of an indexer limit or a debrid quota, players such as Plezy show "file unavailable" and return to the title page instead of staying stuck.',
@@ -66,21 +124,168 @@ export const REMIX_UPDATES = [
         "Nouveaux réglages dans Remix → Lecture → Continuer à regarder : séries examinées (200 par défaut, de 20 à 1000 ; 100 au plus sur Plex), période du dernier visionnage (illimitée), fenêtre des nouveaux épisodes (60 jours) et nombre maximal de films et de séries (0 = limite de l’application). Pris en compte sans redémarrage.",
         "New settings in Remix → Playback → Continue watching: shows examined (200 by default, 20 to 1000; at most 100 on Plex), last-watched period (unlimited), new episodes window (60 days) and maximum movies and shows (0 = the app’s limit). Applied without a restart.",
       ],
+    ],
+  },
+  {
+    id: "2026-11-21-stats-visible-pre-feeds",
+    version: "0.2.37-remix.124.1",
+    date: "2026-11-21",
+    title: [
+      "Statistiques visibles dès le mode Simple, releases indexées par flux de pre",
+      "Statistics visible from Simple mode, indexed releases by pre feed",
+    ],
+    items: [
       [
-        "« Continuer à regarder » liste toutes les séries en cours, sans plafond, et s’affiche instantanément : l’épisode suivant de chaque série est calculé à l’avance (à chaque visionnage, et quand un nouvel épisode sort) au lieu d’être recherché à chaque affichage. Les droits, le contrôle parental, les masquages et les favoris ne changent pas ; « séries examinées » ne sert plus que de repli le temps du premier remplissage.",
-        "Continue watching lists every show in progress, with no cap, and appears instantly: each show’s next episode is computed ahead of time (on every viewing, and when a new episode is released) instead of being searched on every display. Access rights, parental controls, hidden items and favorites are unchanged; “shows examined” is now only a fallback during the first fill.",
+        "Statistiques est de nouveau visible dans le groupe Remix dès le mode Simple. L’interrupteur Expert ajoute Indexation, Lecture, Visuels et Suivi.",
+        "Statistics is visible again in the Remix group from Simple mode. The Expert switch adds Indexing, Playback, Visuals and Tracking.",
       ],
       [
-        "Les nouvelles saisons et les nouveaux épisodes, sortis après votre dernier visionnage dans la fenêtre des nouveaux épisodes, passent en tête de « Continuer à regarder », comme dans Nuvio ; le reste suit, de la dernière lecture la plus récente à la plus ancienne. Les épisodes des séries jamais ouvertes dans Ether sont complétés en arrière-plan (20 séries toutes les 5 minutes, en pause pendant une lecture), puis revérifiés 4 fois par jour, et toutes les 30 minutes pour les séries encore diffusées, pour qu’aucune série en cours ne manque.",
-        "New seasons and new episodes, released after your last viewing within the new-episode window, come first in Continue Watching, as in Nuvio; the rest follows, from the most recently watched to the oldest. Episodes of shows never opened in Ether are filled in the background (20 shows every 5 minutes, paused during playback), then checked again 4 times a day, and every 30 minutes for shows still airing, so that no show in progress is missing.",
+        "Statistiques → Résumé affiche les releases indexées au total et par source. Quand l’option Pre est activée, un tableau détaille chaque flux de pre : annonces lues, releases indexées, en attente, non trouvées et dernière lecture (annonces reçues et retenues, ou erreur courte). Sinon, un encart renvoie vers Indexation → Pre (bêta) pour l’activer.",
+        "Statistics → Summary shows indexed releases overall and by source. When the Pre option is on, a table details each pre feed: announcements read, indexed releases, pending, not matched and last read (announcements received and kept, or a short error). Otherwise a note links to Indexing → Pre (beta) to enable it.",
       ],
       [
-        "Jellyfin affiche les bibliothèques Remix et leurs collections selon les droits de chaque spectateur. Un profil limité aux bibliothèques Remix peut parcourir, rechercher, reprendre et retrouver la suite (« À suivre ») des titres autorisés. Le contrôle parental reste actif.",
-        "Jellyfin shows Remix libraries and their collections according to each viewer’s permissions. A viewer limited to Remix libraries can browse, search, resume and find the next episode (“Next Up”) of permitted titles. Parental controls still apply.",
+        "Pre (bêta) : vous pouvez maintenant ajouter autant de sites (flux RSS ou API, avec une clé facultative par site) que vous voulez. Un bouton « Tester les flux » lit chaque flux tout de suite et montre le résultat, les annonces retenues et des exemples, ou l’erreur.",
+        "Pre (beta): you can now add as many sites as you like (RSS feed or API, with an optional key per site). A “Test the feeds” button reads each feed right away and shows the result, kept announcements and examples, or the error.",
       ],
       [
-        "Dans Jellyfin, une liste de tous les épisodes ne parcourt plus chaque série des bibliothèques Remix : le serveur ne se bloque plus. Les saisons et les épisodes s’ouvrent depuis la fiche de la série.",
-        "In Jellyfin, a list of every episode no longer walks each series of the Remix libraries, so the server no longer stalls. Seasons and episodes open from the series page.",
+        "Pre (bêta) : nouveau réglage de proxy (HTTP, SOCKS ou relais MediaFlow, avec identifiants) pour les flux publics, utile quand predb.me refuse l’adresse du serveur (erreur 403). Lecture toutes les minutes par défaut, et l’API animés de predb.net est lue en plus pour ne plus perdre les animés.",
+        "Pre (beta): new proxy setting (HTTP, SOCKS or MediaFlow relay, with credentials) for the public feeds, useful when predb.me refuses the server address (403 error). Read every minute by default, and the predb.net anime API is now read too so anime are no longer missed.",
+      ],
+    ],
+  },
+  {
+    id: "2026-11-20-simple-expert-menu",
+    version: "0.2.37-remix.122.1",
+    date: "2026-11-21",
+    title: [
+      "Menu Remix dans la barre latérale : mode Simple, assistant et Diagnostic",
+      "Remix menu in the sidebar: Simple mode, assistant and Diagnostics",
+    ],
+    items: [
+      [
+        "Un groupe Remix apparaît dans le menu de gauche, au-dessus de Bibliothèque. Il s’ouvre en mode Simple : Accueil, Sources, Langues et qualité, Contenus et Diagnostic. Accueil liste trois étapes avec leur état.",
+        "A Remix group appears in the left menu, above Libraries. It opens in Simple mode: Start, Sources, Languages and quality, Content and Diagnostics. Start lists three steps with their status.",
+      ],
+      [
+        "Au premier lancement sans source, un assistant en quatre étapes (Sources, Langue, Application, Terminé) démarre une seule fois. Il se relance depuis Accueil. Une installation déjà configurée n’est pas interrompue.",
+        "On a first launch with no source, a four-step assistant (Sources, Language, App, Done) starts once. It can be run again from Start. An already configured installation is not interrupted.",
+      ],
+      [
+        "Diagnostic vérifie les sources, l’indexation, les titres prêts à lire et le stockage, avec une action par problème.",
+        "Diagnostics checks sources, indexing, titles ready to play and storage, with one action per problem.",
+      ],
+      [
+        "En mode Simple, Sources se limite à Stremio, Debrid, Usenet, Streaming musical, Fichiers locaux et IPTV, rangés par usage.",
+        "In Simple mode, Sources is limited to Stremio, Debrid, Usenet, Music streaming, Local files and IPTV, arranged by use.",
+      ],
+      [
+        "Chaque option n’a plus qu’un emplacement : SubMaker passe dans Lecture → Sous-titres, le tri des bibliothèques dans Contenus, et l’activité des recherches se suit uniquement dans Statistiques → Recherches. Contenus → Musique indique où régler chaque partie de la musique.",
+        "Each option now has a single place: SubMaker moves to Playback → Subtitles, library sorting to Content, and search activity is tracked only in Statistics → Searches. Content → Music shows where to set each part of music.",
+      ],
+      [
+        "Statistiques se découpe en cinq vues, une par question : Résumé, Catalogue, Recherches, Sources et Utilisation. La section Pre (bêta) a sa propre vue dans Indexation, qui cite les flux publics lus par défaut ; quand elle est activée, Statistiques → Résumé affiche les releases indexées au total et, pour chaque flux de pre, celles qui en sont issues.",
+        "Statistics is split into five views, one per question: Summary, Catalogue, Searches, Sources and Usage. The Pre (beta) section has its own view under Indexing, which lists the public feeds read by default; when it is on, Statistics → Summary shows releases indexed overall and, for each pre feed, those coming from it.",
+      ],
+      [
+        "L’interrupteur Expert du groupe ajoute Indexation, Lecture, Visuels, Suivi et Statistiques, sans rien retirer. Le choix est mémorisé dans votre navigateur ; les anciens liens et favoris continuent de fonctionner.",
+        "The group’s Expert switch adds Indexing, Playback, Visuals, Tracking and Statistics, with nothing removed. The choice is remembered in your browser; old links and bookmarks keep working.",
+      ],
+    ],
+  },
+  {
+    id: "2026-11-21-opendeezer",
+    version: "0.2.37-remix.121.1",
+    date: "2026-11-21",
+    title: [
+      "OpenDeezer : lecture avec votre compte Deezer",
+      "OpenDeezer: play with your Deezer account",
+    ],
+    items: [
+      [
+        "Nouvelle source musicale, désactivée par défaut (Sources → Streaming musical → Autres sources) : Remix lit les titres Deezer complets accessibles à votre compte avec votre session ARL, en secours après vos autres sources ou avant elles. Flux relayé sans téléchargement ni stockage ; MP3 128 kb/s avec un compte gratuit. Un aperçu de 30 s ou un refus de Deezer fait passer à la source suivante. Le test des sources vérifie la connexion.",
+        "New music source, disabled by default (Sources → Music streaming → Other sources): Remix streams full Deezer tracks available to your account using your ARL session, as a fallback after your other sources or before them. The stream is relayed with no download or storage; MP3 128 kbps with a free account. A 30 s preview or a refusal from Deezer moves on to the next source. The source test checks the connection.",
+      ],
+    ],
+  },
+  {
+    id: "2026-11-20-pre-index",
+    version: "0.2.37-remix.120.1",
+    date: "2026-11-20",
+    title: [
+      "Index des pre en bêta (releases FR / MULTi / VOSTFR)",
+      "Pre index in beta (FR / MULTi / VOSTFR releases)",
+    ],
+    items: [
+      [
+        "Nouvelle option facultative en bêta, désactivée par défaut (Remix → Indexation → Pre (bêta)) : Remix lit les annonces de releases (pre) françaises, MULTi et VOSTFR. Une release annoncée est considérée comme disponible sous environ une heure sur vos sources (debrid, BitTorrent, Usenet) : elle compte comme release indexée et son film ou sa série est ajouté au catalogue sans attendre TMDB.",
+        "New optional beta setting, off by default (Remix → Indexing → Pre (beta)): Remix reads French, MULTi and VOSTFR release announcements (pre). An announced release is assumed available within about an hour on your sources (debrid, BitTorrent, Usenet): it counts as an indexed release and its movie or show is added to the catalogue without waiting for TMDB.",
+      ],
+      [
+        "Vous pouvez ajouter vos propres flux RSS ou une API personnelle avec votre clé ; rien de personnel n’est lu sans votre saisie. Une pre ne sert jamais de lien : la lecture passe toujours par vos sources.",
+        "You can add your own RSS feeds or a personal API with your key; nothing personal is read without your input. A pre is never used as a link: playback always goes through your sources.",
+      ],
+    ],
+  },
+  {
+    id: "2026-11-20-limit-debrid",
+    version: "0.2.37-remix.119.1",
+    date: "2026-11-20",
+    title: [
+      "Limiter le recours aux débrideurs, voire préférer le téléchargement & streaming BitTorrent/Usenet",
+      "Limit debrid usage, or even prefer BitTorrent/Usenet download & streaming",
+    ],
+    items: [
+      [
+        "La section « Configuration rapide des sources » de Lecture → Priorités s’intitule désormais « Limiter le recours aux débrideurs, voire préférer le téléchargement & streaming BitTorrent/Usenet ». Son fonctionnement est inchangé.",
+        "The “Quick source setup” section in Playback → Priorities is now titled “Limit debrid usage, or even prefer BitTorrent/Usenet download & streaming”. Its behavior is unchanged.",
+      ],
+    ],
+  },
+  {
+    id: "2026-11-20-quick-setup-free-order",
+    version: "0.2.37-remix.118.1",
+    date: "2026-11-20",
+    title: ["Configuration rapide : ordre libre", "Quick setup: free ordering"],
+    items: [
+      [
+        "« Mode rapide » devient « Configuration rapide ». Les quatre sources se déplacent librement avec ↑ / ↓ ou par glisser-déposer, cochées ou non ; les sources cochées sont essayées de haut en bas.",
+        "“Quick mode” becomes “Quick setup”. All four sources can be moved freely with ↑ / ↓ or drag and drop, checked or not; checked sources are tried from top to bottom.",
+      ],
+    ],
+  },
+  {
+    id: "2026-11-20-yearless-episodes",
+    version: "0.2.37-remix.117.1",
+    date: "2026-11-20",
+    title: ["Épisodes sans année dans le nom", "Episodes without a year in the filename"],
+    items: [
+      [
+        "Les épisodes peuvent être retenus sans année dans leur nom après vérification du catalogue local : titre complet, année catalogue connue, épisode exact et absence d’homonyme connu.",
+        "Episodes can be retained without a filename year after checking the local catalogue: complete title, known catalogue year, exact episode and no known namesake.",
+      ],
+      [
+        "Les années contradictoires et identités ambiguës restent refusées. Si les références conservées ne conviennent pas au lecteur, la recherche de secours peut récupérer les autres releases des sources.",
+        "Conflicting years and ambiguous identities remain rejected. If retained references do not suit the player, rescue search can retrieve other source releases.",
+      ],
+    ],
+  },
+  {
+    id: "2026-11-19-quick-source-setup",
+    version: "0.2.37-remix.116.1",
+    date: "2026-11-19",
+    title: ["Configuration rapide des sources", "Quick source setup"],
+    items: [
+      [
+        "Un mode facultatif dans Lecture → Priorités : Alkodiques uniquement, Usenet, client torrent Ether-Remix et Seedstrem, activables et ordonnables séparément.",
+        "An optional mode in Playback → Priorities: Alkodiques only, Usenet, Ether-Remix torrent client and Seedstrem, independently enabled and ordered.",
+      ],
+      [
+        "Les filtres restent obligatoires. Une source vide ou inutilisable laisse la place à la suivante ; les autres addons Stremio sont le dernier recours. Les liens Seedstrem restent HTTP et ne sont ouverts qu’à la lecture.",
+        "Mandatory filters stay enforced. Empty or unusable sources give way to the next; other Stremio addons are the last resort. Seedstrem links remain HTTP and open only for playback.",
+      ],
+      [
+        "Désactivé par défaut, ce mode conserve les réglages avancés et ne modifie ni les médias locaux ni la musique.",
+        "Off by default, this mode preserves advanced settings and does not change local media or music.",
       ],
     ],
   },

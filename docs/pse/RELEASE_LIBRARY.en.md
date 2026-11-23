@@ -32,7 +32,11 @@ Failed counter refreshes keep previous values and no longer close the explorer. 
 
 ## Media identity and index repair
 
-A TMDB/IMDb query is not proof of a correct answer. Even a matching reported ID requires a complete catalogue title (original/alternate titles included) and exact movie year. Conflicting IDs reject the result. Episodes require matching series identity and one compatible episode number; without a matching reported ID, the series year is required too. Season packs, ambiguous names and results without an actual source locator are rejected. Normal searches, rescue searches and stored playback candidates share this rule.
+Episodes without a filename year are admitted after checking the local catalogue: known series year, complete title, exact episode and no known namesake. Conflicting years remain rejected; catalogue errors keep the strict check.
+
+Previously rejected links are not restored from quarantine. A new search or import must supply them; addon caches and budgets still apply. Existing rescue search bypasses the retained index when no candidate is suitable, including when every retained reference exceeds the player resolution limit.
+
+A TMDB/IMDb query is not proof of a correct answer. Even a matching reported ID requires a complete catalogue title (original/alternate titles included) and exact movie year. Conflicting IDs reject the result. Episodes require matching series identity and one compatible episode number; without a matching reported ID, the catalogue series year is required too. A filename year may be omitted only after a successful local namesake check. Season packs, ambiguous names and results without an actual source locator are rejected. Normal searches, rescue searches and stored playback candidates share this rule.
 
 Audit version 2 runs even if the previous audit completed. Existing metadata and encrypted references, including StreamFusion imports, are checked without treating their old TMDB association as its own proof. Unconfirmed rows are preserved privately in `pse_releases_quarantine` and `pse_release_library_quarantine`, excluded from browsing and reuse. Missing evidence does not necessarily mean an incorrect association. Indexing and library reuse wait for the audit; derived counters and old availability verdicts are recomputed.
 
@@ -47,3 +51,6 @@ Global release search scans names without forcing chronological reads; category 
 Links must meet active Remix criteria before storage and reuse: global or scoped profiles in profile mode; simple filters and French catalogue languages in simple mode. Explicit language exceptions remain active without bypassing quality requirements. Unknown language cannot satisfy a French/MULTi/VOSTFR requirement.
 
 Old links are cleaned up after profiles and exceptions are refreshed, on startup, after changes and during periodic maintenance. No video files are deleted. Observations without links remain diagnostic metadata; they do not prove compliance or playback availability. Broadening criteria requires fresh searches to recover rejected links. “Retained reference” does not replace client and playback profile checks.
+
+
+[Quick setup](QUICK_SOURCES.en.md) retains the existing search and reference mechanisms. An indexed reference never jumps ahead of a higher selected source; source order applies before playback validation.

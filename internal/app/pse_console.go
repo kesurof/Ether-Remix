@@ -268,6 +268,9 @@ func (a *App) pseHandlers(m map[string]http.Handler) {
 			sort.Slice(out, func(i, j int) bool { return out[i].Label.FR < out[j].Label.FR })
 			return out
 		},
+		TestPre: func(ctx context.Context, get func(string) string) any {
+			return releasedb.TestPreFeeds(ctx, releasedb.LoadPreDBSettingsWith(get))
+		},
 		TestMusic: func(ctx context.Context, key, value string) (string, error) {
 			if music.IsCommunityKey(key) {
 				key = "PSE_MUSIC_ECLIPSE_URL"
@@ -457,6 +460,7 @@ func (a *App) pseStatus(ctx context.Context, rt *pseRuntime) map[string]any {
 	}
 	out["indexer"] = indexer
 	out["sfr"] = map[string]any{"active": releasedb.LoadSFRSettings().Enabled, "import": releasedb.NewStore(a.db).LoadSFRStatus(ctx)}
+	out["predb"] = map[string]any{"active": releasedb.LoadPreDBSettings().Active(), "import": releasedb.NewStore(a.db).LoadPreDBStatus(ctx)}
 	m := map[string]any{"active": rt.music.Load() != nil, "path": "/rest/", "source": music.LoadSettings().Mode()}
 	if totals, err := music.NewLibrary(a.db).Totals(ctx); err == nil {
 		m["library"] = totals

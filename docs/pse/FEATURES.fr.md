@@ -33,6 +33,7 @@
 
 Les indexeurs (Prowlarr, Jackett, NZBHydra2) trouvent les releases. Pour les lire, configurez la voie adaptée : compte débrideur, client BitTorrent ou addon Stremio comme Seedstrem. Seedstrem utilise son propre client torrent. Pour Usenet, Remix lit via son moteur NNTP et vos fournisseurs Usenet ; SABnzbd/NZBGet ne sont pas des clients externes intégrés.
 
+- **Groupe Remix, mode Simple et mode Expert** : le menu de gauche a un groupe **Remix**, au-dessus de Bibliothèque. Il s’ouvre en mode Simple (Accueil, Sources, Langues et qualité, Contenus, Statistiques, Diagnostic), avec un assistant en quatre étapes au premier lancement. L’interrupteur **Expert**, mémorisé par navigateur, ajoute Indexation, Lecture, Visuels et Suivi.
 - **Démarrage rapide** : la vue **Vue d’ensemble → Démarrage** guide les premiers réglages — sources, indexation vidéo, langues et qualité, statistiques et clients. Un rappel signale lorsque la recherche automatique est désactivée.
 - **Console Remix** : réglages regroupés dans `/ether/remix`, blocs repliables fermés par défaut ; iBroadcast rejoint les fournisseurs musicaux et les informations Subsonic restent dans Contenus → Musique.
 - **IPTV et VOD Xtream** : chaînes en direct, guide EPG et import des films et séries du fournisseur.
@@ -120,9 +121,10 @@ Un **style pour plusieurs cartes** peut être préparé depuis une même galerie
 - **Lecture musicale Plex / Jellyfin** : le cache des albums et artistes est partagé sans erreur lors du passage d’un client à l’autre.
 - Parcourez le **catalogue Deezer public** depuis Plex/Plexamp, les clients Jellyfin ou une application Subsonic : Symfonium, Feishin, Supersonic, DSub…
 - Écoutez via **Audius, les addons Eclipse, DMM avec Real-Debrid ou vos comptes AllDebrid, Real-Debrid et TorBox**, selon les sources activées.
+- **OpenDeezer**, désactivé par défaut : lecture directe des titres Deezer complets accessibles avec votre propre compte Deezer (cookie `arl`, Sources → Streaming musical → Autres sources), en repli après vos autres sources ou avant elles. Flux relayé au fil de l’eau (Range et déplacement compris), sans téléchargement ni stockage. Compte gratuit : MP3 128 kb/s seulement. Un aperçu de 30 s ou un refus de Deezer rend la source indisponible : la suivante prend le relais. Détails : [Sources audio](AUDIO-SOURCES.fr.md#opendeezer).
 - Instance DMM publique : [catalogue](https://debridmediamanager.com/albums). L’adresse est configurable dans Sources → Streaming musical → DMM / Real-Debrid pour utiliser une instance auto-hébergée disposant de son catalogue musical et de son API.
 - **Musique locale** : lisez vos fichiers dans leur format d’origine, avec artistes, albums et tags, depuis des dossiers de l’hôte ou des montages réseau exposés par des volumes Docker en lecture seule. Analyse à la demande et chaque heure, sans déplacer ni supprimer les fichiers.
-- **iBroadcast** : chaque spectateur peut connecter plusieurs comptes par code OAuth et retrouver leurs bibliothèques. Accès en lecture seule, lecture MP3 128 kb/s ; import des playlists en option.
+- **iBroadcast** : chaque spectateur peut connecter plusieurs comptes par code OAuth et retrouver leurs bibliothèques. Accès en lecture seule, qualité originale par défaut (Premium), avec repli MP3 128 kb/s si refusée ; import des playlists en option.
 - **Accès privés et partage** : dossiers musicaux et comptes iBroadcast sont privés par défaut, partageables avec certains spectateurs ou tous. Les sources autorisées apparaissent ensemble dans Musique. [Configuration et formats](GUIDE.fr.md#médias-locaux-et-ibroadcast).
 - Définissez l’ordre des sources : lorsqu’une source échoue, Remix essaie les suivantes. Le mode HiFi API externe s’utilise seulement lorsqu’aucune autre source musicale n’est active.
 - Retrouvez vos **favoris et votre historique par utilisateur**. La qualité disponible dépend des sources.
@@ -156,7 +158,7 @@ Un **style pour plusieurs cartes** peut être préparé depuis une même galerie
 
 ### Une interface adaptée à vos habitudes
 
-- Sept onglets : **Vue d’ensemble** (démarrage, activité, sources, utilisation), **Sources** (avec la santé des médias locaux), **Indexation** (réglages et releases), **Lecture** (priorités, qualité, VOSTFR, Continuer à regarder), **Contenus**, **Visuels** (cartes Nuvio, packs, renouvellement des affiches) et **Suivi**. Les anciens liens et favoris sont redirigés.
+- **Statistiques** (dès le mode Simple) et, en mode Expert, **Indexation** (réglages, releases, Pre), **Lecture** (priorités, qualité, VOSTFR, sous-titres, Continuer à regarder), **Visuels** (cartes Nuvio, packs, renouvellement des affiches) et **Suivi**. Statistiques : (démarrage, activité, sources, utilisation), en plus de **Sources** (avec la santé des médias locaux) et **Contenus**. Les anciens liens et favoris sont redirigés.
 - Indexation automatique des addons Stremio activés ou sélection personnalisée, même vide ; filtres par instance Prowlarr/Jackett et compteurs catalogue, recherchés, avec release et affichés pour chaque bibliothèque ou collection prioritaire.
 - Sources regroupées par famille, tri par catégorie ou contenu, clés debrid affichables ponctuellement et blocs repliables sans perdre la saisie. Réglez les palettes dans **Apparence**.
 - Six palettes : **Ether, Nord, Catppuccin, Solarized, Gruvbox et Rosé Pine**, chacune en clair et sombre, avec aperçu immédiat et mémorisation par navigateur.
