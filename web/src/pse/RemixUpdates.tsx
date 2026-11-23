@@ -39,6 +39,10 @@ export const REMIX_UPDATES = [
         "On Plex and Plezy, Home and the libraries’ Recommended view show at once: the last built version is served, then updated in the background, including right after a viewing. A restricted viewer or a change of rights always waits for an up-to-date screen. Setting “Instant screens” (PSE_INSTANT_SCREENS), on by default.",
       ],
       [
+        "Sans musique personnelle, ou quand sa synchronisation échoue, la musique n’est plus rechargée au démarrage et toutes les heures : ses sources de lecture ne sont plus remises à zéro sans raison.",
+        "Without personal music, or when its sync fails, music is no longer reloaded at startup and every hour: its playback sources are no longer reset for no reason.",
+      ],
+      [
         "Les bibliothèques, rangées et collections n’affichent plus que ce qui est déjà en base : aucune fiche TMDB complétée, aucune écriture du catalogue et aucun préchauffage debrid pendant le défilement. Les détails ne partent qu’à l’ouverture d’une fiche ou à la lecture (réglage Listes légères, actif par défaut).",
         "Libraries, rows and collections now only show what is already stored: no TMDB detail fetched, no catalogue write and no debrid warm-up while browsing. Details load only when a title is opened or played (Light lists setting, on by default).",
       ],
