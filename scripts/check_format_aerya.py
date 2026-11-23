@@ -95,21 +95,26 @@ def grows_current_note(before, after):
     return note is not None and note == same and len(NOTE_ITEM.findall(new)) > len(NOTE_ITEM.findall(old))
 
 
-def synced_on(upstream):
+def synced_on(upstream, base):
     """Vrai pour une synchronisation : HEAD contient l'amont et n'en diffère que par le fork."""
     try:
         git("merge-base", "--is-ancestor", upstream, "HEAD")
     except subprocess.CalledProcessError:
         return False
     diff = set(git("diff", "--name-only", "-z", upstream, "HEAD").split("\0")[:-1])
-    return diff <= FORK_TOUCHED
+    if not diff <= FORK_TOUCHED:
+        return False
+    # La PR doit apporter du code d'Aerya : une PR limitée aux fichiers du fork reste contrôlée.
+    mb = git("merge-base", base, "HEAD").strip()
+    brought = set(git("diff", "--name-only", "-z", mb, "HEAD").split("\0")[:-1])
+    return bool(brought - FORK_TOUCHED)
 
 
 def main():
     base = sys.argv[1] if len(sys.argv) > 1 else "origin/main"
     title = sys.argv[2] if len(sys.argv) > 2 else ""
     upstream = sys.argv[3] if len(sys.argv) > 3 else ""
-    if upstream and synced_on(upstream):
+    if upstream and synced_on(upstream, base):
         print(f"Synchronisation sur {upstream} : seuls les fichiers propres au fork diffèrent.")
         sys.exit(0)
     mb = git("merge-base", base, "HEAD").strip()

@@ -88,6 +88,16 @@ class FormatCheckTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn(LOCALE, result.stderr)
 
+    def test_checks_fork_only_pr_when_already_synced(self):
+        self.git("branch", "amont")
+        self.write("scripts/check_discord.py", "# fork\n")
+        self.commit()
+        result = subprocess.run(
+            [sys.executable, str(CHECKER), self.base, "pas un titre conventionnel", "amont"],
+            cwd=self.repo, capture_output=True, text=True,
+        )
+        self.assertNotIn("Synchronisation", result.stdout)
+
     def test_rejects_file_outside_remix_locations(self):
         self.write("scripts/foreign.py", "pass\n")
         result = self.check_format()
