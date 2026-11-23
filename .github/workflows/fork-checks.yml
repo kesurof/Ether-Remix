@@ -27,7 +27,10 @@ jobs:
         env:
           BASE: ${{ github.base_ref }}
           TITLE: ${{ github.event.pull_request.title }}
-        run: python3 scripts/check_format_aerya.py "origin/$BASE" "$TITLE"
+        # Une synchronisation (arbre d'Aerya + fichiers du fork) passe sans relire le code d'Aerya.
+        run: |
+          git fetch -q --no-tags https://github.com/Aerya/Ether-Remix.git main:refs/remotes/amont/main
+          python3 scripts/check_format_aerya.py "origin/$BASE" "$TITLE" amont/main
       - name: Tests du contrôle de format
         run: python3 -m unittest discover -s scripts -p test_check_format_aerya.py
 

@@ -59,6 +59,35 @@ class FormatCheckTest(unittest.TestCase):
             capture_output=True, text=True,
         )
 
+    def sync_check(self, extra):
+        self.git("checkout", "-qb", "amont")
+        self.write(LOCALE, '{"ether": "nouveau"}\n')
+        self.write(ETHER_FILE, "package app\n\nvar amont = 1\n")
+        self.commit()
+        self.git("checkout", "-q", "-")
+        self.write("scripts/check_discord.py", "# fork\n")
+        self.commit()
+        self.git("-c", "user.name=t", "-c", "user.email=t@example.invalid", "merge", "-q",
+                 "--no-edit", "-X", "theirs", "amont")
+        extra()
+        return subprocess.run(
+            [sys.executable, str(CHECKER), self.base, "chore: synchro", "amont"], cwd=self.repo,
+            capture_output=True, text=True,
+        )
+
+    def test_accepts_sync_that_only_adds_fork_files(self):
+        result = self.sync_check(lambda: None)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Synchronisation", result.stdout)
+
+    def test_checks_sync_that_changes_ether_beyond_upstream(self):
+        def extra():
+            self.write(ETHER_FILE, "package app\n\nvar fork = 2\n")
+            self.commit()
+        result = self.sync_check(extra)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn(LOCALE, result.stderr)
+
     def test_rejects_file_outside_remix_locations(self):
         self.write("scripts/foreign.py", "pass\n")
         result = self.check_format()
