@@ -1,4 +1,5 @@
 import type { Descriptor } from "../lib/extend";
+import { REMIX_NAV, remixHref } from "./navigation";
 const text = (fr: string, en = fr) => ({ fr, en });
 const demoField = (key: string, fr: string, en: string, kind = "toggle", extra = {}) => ({
   key,
@@ -11,6 +12,113 @@ const demoField = (key: string, fr: string, en: string, kind = "toggle", extra =
   ...extra,
 });
 const demoFeatures = [
+  {
+    id: "predb",
+    title: text(
+      "Pre (bêta) : annonces de releases FR / MULTi / VOSTFR",
+      "Pre (beta): FR / MULTi / VOSTFR release announcements",
+    ),
+    description: text("Fonction en bêta."),
+    status: {
+      active: true,
+      import: {
+        state: "ok",
+        last: 1795240000,
+        added: 12,
+        pending: 3,
+        feeds: [
+          {
+            feed: "https://api.predb.net/feed/",
+            seen: 4,
+            indexed: 3,
+            pending: 1,
+            unmatched: 0,
+            state: "ok",
+            fetched: 20,
+            kept: 1,
+            readAt: 1795240000,
+          },
+          {
+            feed: "https://api.predb.net/?type=section&q=ANiME",
+            seen: 2,
+            indexed: 2,
+            pending: 0,
+            unmatched: 0,
+            state: "ok",
+            fetched: 20,
+            kept: 0,
+          },
+          {
+            feed: "https://predb.me/?cats=movies&rss=1",
+            seen: 0,
+            indexed: 0,
+            pending: 0,
+            unmatched: 0,
+            state: "error",
+            error: "flux refusé (403)",
+          },
+          {
+            feed: "perso:1",
+            label: "Mon tracker",
+            seen: 6,
+            indexed: 7,
+            pending: 2,
+            unmatched: 0,
+            state: "ok",
+            fetched: 50,
+            kept: 6,
+          },
+        ],
+      },
+    },
+    fields: [
+      demoField("PSE_PREDB", "Activer", "Enable", "toggle", { value: "on" }),
+      demoField("PSE_PREDB_PUBLIC", "Flux publics", "Public feeds", "toggle", {
+        value: "on",
+        default: "on",
+      }),
+      demoField(
+        "PSE_PREDB_FEEDS",
+        "Flux privés (RSS, API...)",
+        "Private feeds (RSS, API...)",
+        "feeds",
+        {
+          help: text(
+            "Ajoutez autant de sites que vous voulez : un nom (facultatif), l'adresse d'un flux RSS ou d'une API JSON et, si le site en demande une, sa clé d'API.",
+          ),
+          value: '[{"name":"Mon tracker","url":"https://tracker.example/rss","key":"••••••"}]',
+        },
+      ),
+      demoField(
+        "PSE_PREDB_PROXY_TYPE",
+        "Proxy pour les appels PRE",
+        "Proxy for PRE calls",
+        "select",
+        {
+          options: [
+            { value: "", label: text("Aucun (lecture directe)", "None (direct)") },
+            {
+              value: "proxy",
+              label: text("Proxy HTTP, HTTPS ou SOCKS5", "HTTP, HTTPS or SOCKS5 proxy"),
+            },
+            { value: "mediaflow", label: text("Relais MediaFlow", "MediaFlow relay") },
+          ],
+        },
+      ),
+      demoField(
+        "PSE_PREDB_PROXY_URL",
+        "Adresse du proxy ou du relais",
+        "Proxy or relay address",
+        "url",
+      ),
+      demoField(
+        "PSE_PREDB_PROXY_AUTH",
+        "Identifiants du proxy (utilisateur:mot de passe) ou mot de passe API MediaFlow",
+        "Proxy credentials or MediaFlow API password",
+        "secret",
+      ),
+    ],
+  },
   {
     id: "music",
     title: text("Musique", "Music"),
@@ -62,6 +170,13 @@ const demoFeatures = [
           { value: "fallback", label: text("En repli", "Fallback") },
         ],
       }),
+      demoField("PSE_MUSIC_OPENDEEZER", "OpenDeezer", "OpenDeezer", "toggle"),
+      demoField(
+        "PSE_MUSIC_OPENDEEZER_ARL",
+        "Session Deezer (ARL)",
+        "Deezer session (ARL)",
+        "secret",
+      ),
       demoField("PSE_MUSIC_HIFI_URL", "HiFi API", "HiFi API", "url", { advanced: true }),
     ],
   },
@@ -85,6 +200,43 @@ const demoFeatures = [
 ];
 /** Réponses minimales du fork pour le serveur de démonstration Ether. */
 export function remixMock(route: string): Response | undefined {
+  if (route === "POST /pse/predb/test")
+    return Response.json({
+      ok: true,
+      result: {
+        runs: [
+          {
+            feed: "https://api.predb.net/feed/",
+            state: "ok",
+            fetched: 20,
+            kept: 1,
+            sample: ["Un.Film.2026.FRENCH.1080p.WEB.H264-GRP"],
+          },
+          {
+            feed: "https://api.predb.net/?type=section&q=ANiME",
+            state: "ok",
+            fetched: 20,
+            kept: 0,
+          },
+          {
+            feed: "https://predb.me/?cats=movies&rss=1",
+            state: "error",
+            error: "flux refusé (403)",
+          },
+          {
+            feed: "perso:1",
+            label: "Mon tracker",
+            state: "ok",
+            fetched: 50,
+            kept: 6,
+            sample: [
+              "Serie.S02E05.MULTi.1080p.WEB.H264-GRP",
+              "Autre.2026.VOSTFR.1080p.WEB.H264-GRP",
+            ],
+          },
+        ],
+      },
+    });
   if (route === "GET /pse/music/playlists")
     return Response.json({
       lastfmKey: false,
@@ -145,18 +297,18 @@ export const remixDescriptors: Descriptor[] = [
     owner: "builtin",
     label: { source: "Ether-Remix" },
     icon: "Languages",
-    group: "",
-    order: 15,
-    meta: { route: "/remix", navGroup: "", inNav: true },
+    group: "remix",
+    order: 10,
+    meta: { route: "/remix", navGroup: "remix", inNav: true },
   },
-  {
+  ...REMIX_NAV.map((e, i): Descriptor => ({
     kind: "navItem",
-    id: "pse",
+    id: e.id,
     owner: "builtin",
-    label: { source: "Ether-Remix" },
-    icon: "Languages",
-    group: "",
-    order: 15,
-    meta: { route: "/remix", page: "pse" },
-  },
+    label: { source: e.fr },
+    icon: e.icon,
+    group: "remix",
+    order: 10 + i,
+    meta: { route: remixHref(e.tab), page: "pse" },
+  })),
 ];

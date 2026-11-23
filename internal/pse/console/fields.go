@@ -23,6 +23,7 @@ const (
 	KindCountries = "countries"
 	KindFilter    = "filter"
 	KindURL       = "url"
+	KindFeeds     = "feeds"  // liste de flux : JSON [{name, url, key}], clés masquées à l'affichage
 	KindKey       = "key"    // clé d'API, masquée à l'affichage
 	KindSecret    = "secret" // mot de passe : jamais renvoyé, même en partie
 )
@@ -132,6 +133,33 @@ var Features = communityFields([]Feature{
 		},
 	},
 	{
+		ID:    "predb",
+		Title: tx("Pre (bêta) : annonces de releases FR / MULTi / VOSTFR", "Pre (beta): FR / MULTi / VOSTFR release announcements"),
+		Description: tx("Fonction en bêta : les flux publics et les formats d'API personnels n'ont pas encore été éprouvés en conditions réelles. Lit les annonces de releases (les « pre ») et garde les françaises. Remix part du principe qu'une release annoncée est disponible sous une heure sur vos sources (debrid, BitTorrent, Usenet) : elle compte comme release indexée, et son film ou sa série est ajouté au catalogue sans attendre qu'il y arrive par TMDB. Une pre ne contient aucun lien : la lecture passe toujours par vos sources.",
+			"Beta feature: the public feeds and personal API formats have not yet been proven in real conditions. Reads release announcements (“pre”) and keeps the French ones. Remix assumes an announced release is available within an hour on your sources (debrid, BitTorrent, Usenet): it counts as an indexed release, and its movie or show is added to the catalogue without waiting for it to arrive through TMDB. A pre holds no link: playback always goes through your sources."),
+		Fields: []Field{
+			{Key: "PSE_PREDB", Kind: KindToggle, Default: "off", Label: tx("Activer", "Enable"),
+				Help: tx("Désactivé par défaut. Active les flux publics ci-dessous, plus vos flux personnels si vous en renseignez.", "Off by default. Enables the public feeds, plus your personal feeds if you provide any.")},
+			{Key: "PSE_PREDB_PUBLIC", Kind: KindToggle, Default: "on", Label: tx("Flux publics", "Public feeds"),
+				Help: tx("predb.me et la source publique de PreDB. Décochez pour n'utiliser que vos flux personnels.", "predb.me and PreDB's public source. Untick to use only your personal feeds.")},
+			{Key: "PSE_PREDB_LANGS", Kind: KindMulti, Default: "fr,multi,vostfr", Options: []Option{{"fr", tx("FRENCH / VF (VFF, VFQ, VFI…)", "FRENCH / VF (VFF, VFQ, VFI…)")}, {"multi", tx("MULTi", "MULTi")}, {"vostfr", tx("VOSTFR / SUBFRENCH", "VOSTFR / SUBFRENCH")}}, Label: tx("Langues gardées", "Languages kept"),
+				Help: tx("Les releases « autre langue + MULTi » et les corrections (FIX) sont toujours écartées.", "“Other language + MULTi” releases and fixes are always dropped.")},
+			{Key: "PSE_PREDB_FEEDS", Kind: KindFeeds, Default: "", Label: tx("Flux privés (RSS, API...)", "Private feeds (RSS, API...)"),
+				Help: tx("Ajoutez autant de sites que vous voulez : un nom (facultatif), l'adresse d'un flux RSS ou d'une API JSON et, si le site en demande une, sa clé d'API. La clé est envoyée en en-tête X-API-Key à ce site seulement, jamais dans l'adresse, et n'est jamais réaffichée. Ces sites passent par le proxy ci-dessous, s'il y en a un.", "Add as many sites as you like: an optional name, the address of an RSS feed or JSON API and, if the site needs one, its API key. The key is sent as an X-API-Key header to that site only, never in the address, and is never shown again. These sites go through the proxy below, if you set one.")},
+			{Key: "PSE_PREDB_PROXY_TYPE", Kind: KindSelect, Default: "", Label: tx("Proxy pour les appels PRE", "Proxy for PRE calls"),
+				Help:    tx("predb.me refuse les adresses de serveurs d'hébergeurs (erreur 403). Choisissez un proxy HTTP, HTTPS ou SOCKS5 (par exemple Gluetun), ou un relais MediaFlow, pour lire les flux publics et privés par une autre sortie.", "predb.me refuses hosting-provider addresses (403 error). Pick an HTTP, HTTPS or SOCKS5 proxy (for example Gluetun), or a MediaFlow relay, to read the public and private feeds through another exit."),
+				Options: []Option{{"", tx("Aucun (lecture directe)", "None (direct)")}, {"proxy", tx("Proxy HTTP, HTTPS ou SOCKS5", "HTTP, HTTPS or SOCKS5 proxy")}, {"mediaflow", tx("Relais MediaFlow", "MediaFlow relay")}}},
+			{Key: "PSE_PREDB_PROXY_URL", Kind: KindURL, Default: "", Placeholder: "http://gluetun:8888 · socks5://hôte:1080 · https://mediaflow.exemple.net", Label: tx("Adresse du proxy ou du relais", "Proxy or relay address"),
+				Help: tx("Sans identifiants dans l'adresse : ils se saisissent dans le champ suivant. Adresses http://, https:// ou socks5:// pour un proxy ; http(s):// pour un relais MediaFlow.", "No credentials in the address: enter them in the next field. http://, https:// or socks5:// addresses for a proxy; http(s):// for a MediaFlow relay.")},
+			{Key: "PSE_PREDB_PROXY_AUTH", Kind: KindSecret, Default: "", Label: tx("Identifiants du proxy (utilisateur:mot de passe) ou mot de passe API MediaFlow", "Proxy credentials (user:password) or MediaFlow API password"),
+				Help: tx("Facultatif pour un proxy sans authentification. Pour MediaFlow, saisissez le mot de passe API du relais. Jamais réaffiché.", "Optional for a proxy without authentication. For MediaFlow, enter the relay's API password. Never shown again.")},
+			{Key: "PSE_PREDB_DELAY", Advanced: true, Kind: KindDuration, Default: "1h", Placeholder: "1h", Label: tx("Délai avant prise en compte", "Delay before counting"),
+				Help: tx("Une pre n'est comptée que ce temps après son annonce, le temps que la release arrive sur les sources. 0s : tout de suite.", "A pre only counts this long after its announcement, so the release has time to reach the sources. 0s: immediately.")},
+			{Key: "PSE_PREDB_INTERVAL", Advanced: true, Kind: KindDuration, Default: "1m", Placeholder: "1m", Label: tx("Intervalle de lecture", "Read interval"),
+				Help: tx("Minimum 30s. Les flux publics ne gardent que les 20 dernières annonces : une lecture par minute évite d'en perdre.", "At least 30s. Public feeds only keep the 20 latest announcements: reading once a minute avoids missing some.")},
+		},
+	},
+	{
 		ID:    "torrent",
 		Title: tx("Clients BitTorrent (qBittorrent, rTorrent / ruTorrent)", "BitTorrent clients (qBittorrent, rTorrent / ruTorrent)"),
 		Description: tx("Envoie les releases torrent de vos indexeurs (Prowlarr, Jackett) à votre client, puis les lit une fois téléchargées : films, séries, animés et musique. Les fichiers restent sur le disque du client, qui les partage selon vos limites ; Remix ne supprime jamais rien. Vos comptes debrid restent en « cache uniquement ». Le client peut être distant, mais Remix doit voir son dossier de téléchargement (même machine, ou partage NFS/SMB monté) : sinon l'ajout marche, la lecture non.",
@@ -238,6 +266,13 @@ var Features = communityFields([]Feature{
 			{Key: "PSE_MUSIC_AUDIUS", Kind: KindSelect, Default: "off", Label: tx("Audius (MP3 public)", "Audius (public MP3)"),
 				Help:    tx("Sans compte ni clé. Uniquement les titres publics correspondant au catalogue Deezer. Choisissez le repli pour privilégier vos sources lossless. Le test des sources ci-dessous vérifie la lecture.", "No account or key. Only public tracks matching the Deezer catalogue. Choose fallback to prefer your lossless sources. The source test below checks playback."),
 				Options: []Option{{"off", tx("Désactivé", "Disabled")}, {"first", tx("Avant les addons Eclipse", "Before Eclipse addons")}, {"last", tx("En repli après les autres sources", "Fallback after other sources")}}},
+			{Key: "PSE_MUSIC_OPENDEEZER", Kind: KindToggle, Default: "off", Label: tx("OpenDeezer", "OpenDeezer"),
+				Help: tx("Lit directement les titres Deezer complets accessibles avec votre propre compte Deezer, sans téléchargement ni stockage. Compte gratuit : MP3 128 kb/s, jamais de FLAC. Si Deezer ne fournit qu’un aperçu de 30 s ou refuse le flux, la source est ignorée et la suivante prend le relais. Les publicités du compte gratuit ne sont pas lues par Remix ; chaque écoute est signalée à Deezer comme sur son lecteur web. Utilisez le test des sources ci-dessous pour vérifier la connexion.", "Streams full Deezer tracks available to your own Deezer account directly, with no download or storage. Free account: MP3 128 kbps, never FLAC. If Deezer only provides a 30 s preview or refuses the stream, the source is skipped and the next one takes over. Free-account ads are not played by Remix; each play is reported to Deezer as in its web player. Use the source test below to check the connection.")},
+			{Key: "PSE_MUSIC_OPENDEEZER_ARL", Kind: KindSecret, Default: "", Placeholder: "arl", Label: tx("Session Deezer (ARL) pour OpenDeezer", "Deezer session (ARL) for OpenDeezer"),
+				Help: tx("Cookie « arl » de votre session deezer.com (outils du navigateur › Stockage › Cookies). Il donne accès à votre compte : il n’est jamais réaffiché ni journalisé. Videz le champ pour le supprimer.", "The “arl” cookie of your deezer.com session (browser tools › Storage › Cookies). It gives access to your account: it is never shown again or logged. Clear the field to remove it.")},
+			{Key: "PSE_MUSIC_OPENDEEZER_ORDER", Kind: KindSelect, Default: "last", Label: tx("Rang d’OpenDeezer", "OpenDeezer rank"),
+				Help:    tx("En secours après vos autres sources (conseillé), ou avant elles.", "As a fallback after your other sources (recommended), or before them."),
+				Options: []Option{{"last", tx("En secours après les autres sources", "Fallback after other sources")}, {"first", tx("Avant les autres sources", "Before other sources")}}},
 			{Key: "PSE_MUSIC_ECLIPSE_URL", Kind: KindURL, List: true, Secret: true, Default: "", Placeholder: "https://…/manifest.json", Label: tx("Lien manifest de l'addon Eclipse", "Eclipse addon manifest link"),
 				Help: tx("Le lien manifest.json généré sur le site de l'addon, comme dans Eclipse ou Remux. Plusieurs liens séparés par des espaces : essayés dans l'ordre. Facultatif avec AllDebrid.", "The manifest.json link generated on the addon's site, as in Eclipse or Remux. Several links separated by spaces are tried in order. Optional with AllDebrid.")},
 			{Key: "PSE_LASTFM_API_KEY", Kind: KindKey, Default: "", Placeholder: "32 caractères", Label: tx("Clé API Last.fm", "Last.fm API key"),

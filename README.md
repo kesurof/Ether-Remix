@@ -25,15 +25,19 @@ L’accueil Plex se personnalise dans `/ether/home` : choisissez le spectateur e
 
 ## Remix, en bref
 
+Les épisodes sans année dans le nom sont admis après vérification du catalogue local : année de série connue, titre complet, épisode exact et absence d’homonyme connu. Une année contradictoire reste refusée ; une erreur de catalogue conserve le contrôle strict.
+
 Les **modèles de disposition** enregistrent l’accueil, les bibliothèques et la présentation des collections : sauvegardez l’existant, dupliquez A/B/C et réappliquez une variante avec retour en arrière. Les bibliothèques à thème Plex peuvent combiner dossiers locaux et sources indexées et cibler tous les utilisateurs ou une sélection ; les contenus privés restent filtrés par spectateur. [Guide des dispositions et du partage](docs/pse/FEATURES.fr.md#nav-des-bibliotheques-et-collections-personnalisees).
 
 Ether-Remix reprend le serveur et les applications compatibles d’Ether, avec un catalogue orienté français et des réglages de langue et de qualité. Selon vos choix, l’accueil et les collections privilégient les titres en VF/MULTi ou disposant de releases correspondant à vos critères. La recherche automatique prépare les releases à l’avance sans télécharger les vidéos ; les recherches et imports alimentent le même index, réutilisé à la lecture.
 
 Vos **vidéos locales**, films, épisodes ou vidéos personnelles, rejoignent vos bibliothèques depuis des dossiers de l’hôte ou des montages réseau. Remix cherche une correspondance dans son catalogue puis TMDB et conserve une présentation locale si aucun résultat fiable ne convient. La vue **Sources → Fichiers locaux** signale les fichiers absents, les problèmes de lecture et les doublons potentiels, sans supprimer vos médias.
 
-Les **sources facultatives** complètent le debrid et Usenet : client torrent, XDCC via Grabscher et serveur FTP / SFTP. Torrent et XDCC écrivent des fichiers sur disque ; FTP / SFTP permet aussi une lecture distante sans copie complète, avec le cache habituel d’Ether. Ces sources sont désactivées par défaut.
+Les **sources facultatives** complètent le debrid et Usenet : client torrent, XDCC via Grabscher et serveur FTP / SFTP. Torrent et XDCC écrivent des fichiers sur disque ; FTP / SFTP permet aussi une lecture distante sans copie complète, avec le cache habituel d’Ether. Ces sources sont désactivées par défaut. L’index des **pre** (bêta ; annonces de releases FR / MULTi / VOSTFR, flux personnels facultatifs) alimente aussi le catalogue sans écrire de fichier.
 
-Côté **musique**, réunissez le catalogue Deezer, vos fichiers audio et vos comptes iBroadcast dans Plexamp, les clients Jellyfin ou les applications Subsonic. Les sources musicales et les comptes debrid activés assurent la lecture ; les playlists se parcourent, s’importent et se gèrent par utilisateur. Dossiers locaux et comptes iBroadcast sont privés par défaut, avec partage facultatif.
+Côté **musique**, réunissez le catalogue Deezer, vos fichiers audio et vos comptes iBroadcast dans Plexamp, les clients Jellyfin ou les applications Subsonic. Les sources musicales et les comptes debrid activés assurent la lecture ; les playlists se parcourent, s’importent et se gèrent par utilisateur. Dossiers locaux et comptes iBroadcast sont privés par défaut, avec partage facultatif. iBroadcast privilégie la qualité originale (Premium) et se replie automatiquement sur le MP3 128 kb/s si l’original est refusé.
+
+Ether-Remix a son propre groupe **Remix** dans le menu de gauche, au-dessus de **Bibliothèque**. Il s’ouvre en **mode Simple** pour les débutants : Accueil, Sources, Langues et qualité, Contenus et Diagnostic. L’assistant en quatre étapes se lance au premier lancement sans source, et le **Diagnostic** explique pourquoi rien ne se lance. L’interrupteur **Expert** du groupe ajoute toutes les autres pages, sans rien retirer. [Guide](docs/pse/GUIDE.fr.md#nav-demarrage-rapide).
 
 La configuration rapide **JukeBox** aide à créer vos bibliothèques et collections. Les sous-titres avec SubMaker, le suivi Scrob et Last.fm, les statistiques et la console en français complètent ces usages.
 
@@ -52,6 +56,8 @@ La configuration rapide **JukeBox** aide à créer vos bibliothèques et collect
 <a id="nav-une-interface-adaptee-a-vos-habitudes"></a>
 <a id="nav-la-base-ether-enrichie-par-remix"></a>
 
+**Limiter le recours aux débrideurs, voire préférer le téléchargement & streaming BitTorrent/Usenet** : dans **Remix → Lecture → Priorités**, activez **Configuration rapide**, cochez Alkodiques uniquement, Usenet, client torrent Ether-Remix et/ou Seedstrem, puis ordonnez-les librement (↑ / ↓ ou glisser-déposer). Après les filtres obligatoires, Remix épuise les releases utilisables d’une source avant la suivante ; les autres addons Stremio (dont Debrider) interviennent en dernier recours. [Guide](docs/pse/QUICK_SOURCES.fr.md).
+
 ## Ce que fait Remix
 
 Le [détail des fonctionnalités](docs/pse/FEATURES.fr.md) précise les options, les sources et les limites de chaque usage.
@@ -61,8 +67,8 @@ Le [détail des fonctionnalités](docs/pse/FEATURES.fr.md) précise les options,
 | Films, séries et animés | Préférences VF/MULTi, qualité, catalogue filtré, exceptions VOSTFR et sous-titres SubMaker. |
 | Sources vidéo | Debrid, Usenet, addons Stremio, Prowlarr/Jackett/NZBHydra2, base StreamFusion Reborn et SeerrCatalog. Clients torrent, XDCC et FTP/SFTP en option. |
 | Fichiers locaux | Vidéos et musique depuis vos dossiers ou montages réseau, sans déplacer ni supprimer les originaux. |
-| Bibliothèques et accueil | Collections, configuration rapide JukeBox, import Xperience, modèles de disposition, affiches et cartes personnalisées. Dans Jellyfin, les bibliothèques Remix suivent les droits de chaque spectateur. |
-| Musique | Catalogue Deezer, sources musicales activées, fichiers locaux et iBroadcast ; accès depuis Plexamp, Jellyfin ou Subsonic, avec playlists personnelles. |
+| Bibliothèques et accueil | Collections, configuration rapide JukeBox, import Xperience, modèles de disposition, affiches et cartes personnalisées. Le partage respecte les droits de chaque spectateur : bibliothèques Remix au choix par spectateur, avec ou sans les sections de base, dans Plex, Stremio et Jellyfin. |
+| Musique | Catalogue Deezer, sources musicales activées (dont OpenDeezer, avec votre compte Deezer), fichiers locaux et iBroadcast ; accès depuis Plexamp, Jellyfin ou Subsonic, avec playlists personnelles. |
 | Suivi | Progression et historique par spectateur, activité vidéo et musicale, Scrob, Last.fm et statistiques des sources. |
 | Continuer à regarder | Une ancienne série dont un nouvel épisode vient de sortir remonte en tête de la rangée, classée à la date de sortie. Réglages dans Remix → Lecture → Continuer à regarder : séries examinées (200 par défaut), période du dernier visionnage (illimitée), fenêtre des nouveaux épisodes (60 jours) et nombre maximal de films et de séries. Toutes les séries en cours y figurent, et la rangée s'affiche instantanément : l'épisode suivant de chaque série est calculé à l'avance, à chaque visionnage ou nouvel épisode. |
 | Listes légères | Une bibliothèque, une rangée ou une collection n'affiche que ce qui est déjà en base : aucune fiche TMDB complétée, aucune écriture du catalogue, aucun préchauffage debrid. Les détails ne partent qu'à l'ouverture d'une fiche ou à la lecture. Réglage `PSE_LIGHT_LISTS` (console Remix), actif par défaut. |
@@ -125,6 +131,7 @@ Pour migrer depuis Ether, sauvegardez `/config`, arrêtez l’ancien serveur et 
 | Références, conservation et épisodes indexés | [Index des releases](docs/pse/RELEASE_LIBRARY.fr.md) |
 | Bibliothèques, accueil et partage | [Dispositions](docs/pse/FEATURES.fr.md#nav-des-bibliotheques-et-collections-personnalisees) |
 | Import StreamFusion Reborn | [StreamFusion](docs/pse/STREAMFUSION.fr.md) |
+| Annonces de releases FR (pre, bêta) | [Pre](docs/pse/PRE.fr.md) |
 | Disponibilités SeerrCatalog | [SeerrCatalog](docs/pse/SEERRCATALOG.fr.md) |
 | AllDebrid, MediaFlow et proxys | [Réseau](docs/alldebrid-mediaflow.md) |
 | Sous-titres et traduction | [SubMaker](docs/pse/SUBMAKER.fr.md) |
@@ -144,3 +151,5 @@ Merci à **[JukeBox](https://mdblist.com/lists/jukebox8786/)** pour ses listes M
 Inspirations : [Remux](https://github.com/lostb1t/remux), [Eclipse](https://eclipsemusic.app/), [Monochrome](https://monochrome.st/), [Polyfin](https://github.com/moodiness/polyfin) et [Silo Server](https://github.com/Silo-Server/silo-server). Intégration de suivi : [Scrob](https://github.com/Aerya/scrob). Source XDCC : [XDCC Grabscher](https://github.com/CaptainEpix/xdcc-grabscher) de CaptainEpix. Source FTP / SFTP : [pkg/sftp](https://github.com/pkg/sftp), [jlaffaye/ftp](https://github.com/jlaffaye/ftp). Les métadonnées vidéo utilisent [TMDB](https://www.themoviedb.org/), sans approbation ni certification de TMDB.
 
 [Licence](LICENSE) · [Informations légales](LEGAL.md) · [Composants tiers](THIRD_PARTY_NOTICES.md)
+
+Les contributions passent par une PR vers `main`, avec CI et détection des secrets obligatoires. Les PR de `kesurof/Ether-Remix` ouvertes par `kesurof` fusionnent automatiquement après validation. [Règles de contribution et synchronisation](docs/pse/FORK.fr.md).

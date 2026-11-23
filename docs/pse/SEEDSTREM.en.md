@@ -35,3 +35,8 @@ Remix opens Seedstrem links only for an actual playback request or playback fail
 Enable **Last-resort playback source** in the Stremio source editor to try its results only after normal sources fail, independently of quality and priority. This per-source option defaults to off. An explicitly enforced version or pinned release still takes precedence.
 
 Search and indexing still query Seedstrem without downloading. Results remain candidates, not proof that files are downloaded or playable. Prowlarr can therefore be queried both through Seedstrem and directly if also configured in Remix.
+
+
+## Quick setup
+
+Under **Remix → Playback → Priorities**, [quick setup](QUICK_SOURCES.en.md) places this source in a strict order. Existing settings are preserved and it is off by default. Searches and availability checks never trigger Seedstrem downloads.

@@ -397,8 +397,18 @@ func (c Catalog) Bars() (minPopularity float64, minVotes int) {
 	return c.MinPopularity, c.MinVotes
 }
 
-// SourceOrder is the owner's order of sources among equivalent releases.
+// QuickSources is the opt-in sequential playback policy. An empty order selects only the final addon fallback.
+type QuickSources struct {
+	Enabled bool     `json:"enabled"`
+	Order   []string `json:"order,omitempty"`
+	// Rank keeps the owner's display order of every quick source, selected or not.
+	Rank        []string `json:"rank,omitempty"`
+	SeedstremID string   `json:"seedstremId,omitempty"`
+}
+
+// SourceOrder is the owner's advanced ranking and optional quick playback order.
 type SourceOrder struct {
+	Quick QuickSources `json:"quick,omitzero"`
 	// Families lists "stremio", "usenet" and "torrent", best first.
 	Families []string `json:"families,omitempty"`
 	// Content maps "movie", "show" or "anime" to indexer ids, best first.
